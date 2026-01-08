@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add New User</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="nav">
+    <span></span>
+    <a href="list.html">Show All Users</a>
+  </div>
+
+  <h2>Add New User</h2>
+
+  <form id="userForm">
+    <input type="text" placeholder="First Name" id="firstName" required>
+    <input type="text" placeholder="Last Name" id="lastName" required>
+    <input type="text" placeholder="Mobile" id="mobile" required>
+    <input type="email" placeholder="Email" id="email" required>
+
+    <input type="text" placeholder="Street" id="street">
+    <input type="text" placeholder="City" id="city">
+    <input type="text" placeholder="State" id="state">
+    <input type="text" placeholder="Country" id="country">
+
+    <input type="text" placeholder="Login (8 chars)" id="login" required>
+    <input type="password" placeholder="Password (Aa@123)" id="password" required>
+
+    <button type="submit">Save User</button>
+  </form>
+
+  <p id="msg"></p>
+</div>
+
+<script>
+$("#userForm").submit(function(e){
+  e.preventDefault();
+
+  const data = {
+    firstName: $("#firstName").val(),
+    lastName: $("#lastName").val(),
+    mobile: $("#mobile").val(),
+    email: $("#email").val(),
+    address: {
+      street: $("#street").val(),
+      city: $("#city").val(),
+      state: $("#state").val(),
+      country: $("#country").val()
+    },
+    login: $("#login").val(),
+    password: $("#password").val()
+  };
+
+  $.ajax({
+    url: "http://localhost:5000/api/users/add",
+    type: "POST",
+    contentType: "application/json",
+    data: JSON.stringify(data),
+    success: function () {
+      $("#msg").css("color","green").text("User added successfully ✅");
+      $("#userForm")[0].reset();
+    },
+    error: function (err) {
+      $("#msg").css("color","red").text(err.responseJSON?.error || "Error");
+    }
+  });
+});
+</script>
+
+</body>
+</html>

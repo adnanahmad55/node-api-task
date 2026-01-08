@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User List</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<div class="table-container">
+
+  <div class="nav">
+    <a href="index.html">Add New User</a>
+    <span></span>
+  </div>
+
+  <h2>Registered Users</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Mobile</th>
+        <th>Email</th>
+        <th>City</th>
+      </tr>
+    </thead>
+    <tbody id="userTable"></tbody>
+  </table>
+</div>
+
+<script>
+$(document).ready(function(){
+  $.get("http://localhost:5000/api/users/all", function(data){
+    $("#userTable").html("");
+    data.forEach(user => {
+      $("#userTable").append(`
+        <tr>
+          <td>${user.firstName} ${user.lastName}</td>
+          <td>${user.mobile}</td>
+          <td>${user.email}</td>
+          <td>${user.address.city}</td>
+        </tr>
+      `);
+    });
+  });
+});
+</script>
+
+</body>
+</html>
