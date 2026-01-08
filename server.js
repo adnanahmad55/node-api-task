@@ -1,3 +1,4 @@
+const path = require("path");
 const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
@@ -10,6 +11,7 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 
 // ROUTES
 const userRoutes = require("./routes/userRoutes");
@@ -26,6 +28,9 @@ mongoose
 // TEST ROUTE
 app.get("/", (req, res) => {
   res.send("API is running...");
+});
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // SERVER
