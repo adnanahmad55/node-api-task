@@ -27,23 +27,45 @@
     </thead>
     <tbody id="userTable"></tbody>
   </table>
+
+  <p id="msg" style="text-align:center; margin-top:10px;"></p>
 </div>
 
 <script>
 $(document).ready(function(){
-  $.get("http://localhost:5000/api/users/all", function(data){
-    $("#userTable").html("");
-    data.forEach(user => {
-      $("#userTable").append(`
-        <tr>
-          <td>${user.firstName} ${user.lastName}</td>
-          <td>${user.mobile}</td>
-          <td>${user.email}</td>
-          <td>${user.address.city}</td>
-        </tr>
-      `);
-    });
+
+  $.ajax({
+    url: "https://node-api-task-nl8e.onrender.com/api/users/all", // ✅ RENDER URL
+    type: "GET",
+
+    success: function (data) {
+      $("#userTable").html("");
+
+      if (!data || data.length === 0) {
+        $("#msg").css("color", "orange").text("No users found");
+        return;
+      }
+
+      data.forEach(user => {
+        $("#userTable").append(`
+          <tr>
+            <td>${user.firstName} ${user.lastName}</td>
+            <td>${user.mobile}</td>
+            <td>${user.email}</td>
+            <td>${user.address?.city || "-"}</td>
+          </tr>
+        `);
+      });
+    },
+
+    error: function (err) {
+      console.error(err);
+      $("#msg")
+        .css("color", "red")
+        .text("Failed to load users");
+    }
   });
+
 });
 </script>
 
