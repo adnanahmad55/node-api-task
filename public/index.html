@@ -19,7 +19,7 @@
   <form id="userForm">
     <input type="text" placeholder="First Name" id="firstName" required>
     <input type="text" placeholder="Last Name" id="lastName" required>
-    <input type="text" placeholder="Mobile" id="mobile" required>
+    <input type="text" placeholder="Mobile (10 digits)" id="mobile" required>
     <input type="email" placeholder="Email" id="email" required>
 
     <input type="text" placeholder="Street" id="street">
@@ -40,32 +40,49 @@
 $("#userForm").submit(function(e){
   e.preventDefault();
 
+  $("#msg").text("");
+
   const data = {
-    firstName: $("#firstName").val(),
-    lastName: $("#lastName").val(),
-    mobile: $("#mobile").val(),
-    email: $("#email").val(),
+    firstName: $("#firstName").val().trim(),
+    lastName: $("#lastName").val().trim(),
+    mobile: $("#mobile").val().trim(),
+    email: $("#email").val().trim(),
     address: {
-      street: $("#street").val(),
-      city: $("#city").val(),
-      state: $("#state").val(),
-      country: $("#country").val()
+      street: $("#street").val().trim(),
+      city: $("#city").val().trim(),
+      state: $("#state").val().trim(),
+      country: $("#country").val().trim()
     },
-    login: $("#login").val(),
+    login: $("#login").val().trim(),
     password: $("#password").val()
   };
 
   $.ajax({
-    url: "http://localhost:5000/api/users/add",
+    url: "https://node-api-task-nl8e.onrender.com/api/users/add",   // ✅ RENDER URL
     type: "POST",
     contentType: "application/json",
     data: JSON.stringify(data),
-    success: function () {
-      $("#msg").css("color","green").text("User added successfully ✅");
+
+    success: function (res) {
+      $("#msg")
+        .css("color", "green")
+        .text("User added successfully ✅");
+
       $("#userForm")[0].reset();
     },
+
     error: function (err) {
-      $("#msg").css("color","red").text(err.responseJSON?.error || "Error");
+      console.error(err);
+
+      let message =
+        err.responseJSON?.error ||
+        err.responseJSON?.message ||
+        err.responseText ||
+        "Something went wrong";
+
+      $("#msg")
+        .css("color", "red")
+        .text(message);
     }
   });
 });
