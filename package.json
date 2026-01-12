@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/adnanahmad55/node-api-task#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
