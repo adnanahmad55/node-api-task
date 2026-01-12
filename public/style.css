@@ -113,3 +113,58 @@ tr:hover {
 .hint.success {
   color: green;
 }
+/* =========================
+   LIVE USERS (TASK 2)
+========================= */
+
+.live-box {
+  margin-top: 30px;
+  padding: 15px;
+  border-radius: 8px;
+  background: #f9f9ff;
+  border: 1px solid #e0e0ff;
+}
+
+.live-box h3 {
+  margin-bottom: 10px;
+  color: #444;
+  font-size: 18px;
+  text-align: center;
+}
+
+#liveUsers {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* Individual live user */
+.live-user {
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 5px;
+  background: #fff;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.live-user strong {
+  color: #667eea;
+}
+
+.live-user small {
+  color: #666;
+  font-size: 12px;
+}
+
+.live-user:hover {
+  background: #eef1ff;
+  transform: scale(1.02);
+}
+
+/* Empty live users text */
+#liveUsers p {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+}

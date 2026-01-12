@@ -4,6 +4,24 @@
   <title>User List</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <style>
+    .live-box {
+      margin-top: 30px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+    .live-user {
+      cursor: pointer;
+      padding: 6px;
+      border-bottom: 1px solid #ddd;
+    }
+    .live-user:hover {
+      background: #f0f0f0;
+    }
+  </style>
 </head>
 <body>
 
@@ -29,13 +47,29 @@
   </table>
 
   <p id="msg" style="text-align:center; margin-top:10px;"></p>
+
+  <!-- 🔥 LIVE USERS (TASK 2) -->
+  <div class="live-box">
+    <h3>Live Connected Users</h3>
+    <div id="liveUsers"></div>
+  </div>
+
 </div>
 
+<!-- 🔥 SOCKET.IO -->
+<script src="/socket.io/socket.io.js"></script>
 <script>
+  const socket = io("https://node-api-task-nl8e.onrender.com");
+</script>
+
+<script>
+/* ======================
+   LOAD ALL USERS (TASK 1)
+====================== */
 $(document).ready(function(){
 
   $.ajax({
-    url: "https://node-api-task-nl8e.onrender.com/api/users/all", // ✅ RENDER URL
+    url: "https://node-api-task-nl8e.onrender.com/api/users/all",
     type: "GET",
 
     success: function (data) {
@@ -58,15 +92,60 @@ $(document).ready(function(){
       });
     },
 
-    error: function (err) {
-      console.error(err);
-      $("#msg")
-        .css("color", "red")
-        .text("Failed to load users");
+    error: function () {
+      $("#msg").css("color", "red").text("Failed to load users");
     }
   });
 
 });
+
+/* ======================
+   SOCKET LIVE USERS (TASK 2)
+====================== */
+socket.on("live_users_list", function (users) {
+  const container = $("#liveUsers");
+  container.html("");
+
+  if (!users || users.length === 0) {
+    container.html("<p>No live users</p>");
+    return;
+  }
+
+  users.forEach(u => {
+    container.append(`
+      <div class="live-user" onclick="showUser('${u.email}')">
+        <strong>${u.email}</strong><br>
+        <small>Socket ID: ${u.socketId}</small>
+      </div>
+    `);
+  });
+});
+
+/* ======================
+   CLICK → API → POPUP
+====================== */
+function showUser(email) {
+  $.ajax({
+    url: "https://node-api-task-nl8e.onrender.com/api/users/all",
+    type: "GET",
+
+    success: function (users) {
+      const user = users.find(u => u.email === email);
+
+      if (!user) {
+        alert("User not found");
+        return;
+      }
+
+      alert(
+        `Name: ${user.firstName} ${user.lastName}\n` +
+        `Email: ${user.email}\n` +
+        `Mobile: ${user.mobile}\n` +
+        `City: ${user.address?.city || "-"}`
+      );
+    }
+  });
+}
 </script>
 
 </body>
