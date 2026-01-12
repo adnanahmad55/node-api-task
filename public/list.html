@@ -60,6 +60,13 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io("https://node-api-task-nl8e.onrender.com");
+
+  // 🔥 JOIN LIVE_USERS ROOM ON LIST PAGE LOAD
+  socket.emit("join_live_users", {
+    email: "list@viewer.com",
+    firstName: "List",
+    lastName: "Viewer"
+  });
 </script>
 
 <script>
