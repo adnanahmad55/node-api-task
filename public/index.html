@@ -156,12 +156,17 @@ $("#loginForm").submit(function (e) {
     success: function (res) {
       $("#loginMsg").css("color", "green").text("Login successful ✅");
 
-      // 🔥 SOCKET JOIN AFTER LOGIN (CORRECT)
+      // 🔥 SOCKET JOIN AFTER LOGIN
       socket.emit("join_live_users", {
         email: res.user.email,
         firstName: res.user.firstName,
         lastName: res.user.lastName
       });
+
+      // 🔥 REDIRECT TO LIVE USERS PAGE
+      setTimeout(() => {
+        window.location.href = "list.html";
+      }, 800);
     },
 
     error: function (err) {
