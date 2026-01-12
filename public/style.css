@@ -100,3 +100,16 @@ tr:hover {
 .nav a:hover {
   background: #5a67d8;
 }
+.hint {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.hint.error {
+  color: red;
+}
+
+.hint.success {
+  color: green;
+}

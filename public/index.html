@@ -27,8 +27,12 @@
     <input type="text" placeholder="State" id="state">
     <input type="text" placeholder="Country" id="country">
 
-    <input type="text" placeholder="Login (8 chars)" id="login" required>
-    <input type="password" placeholder="Password (Aa@123)" id="password" required>
+   <input type="text" placeholder="Login (8 letters only)" id="login" required>
+<small id="loginHint" class="hint"></small>
+
+<input type="password" placeholder="Password" id="password" required>
+<small id="passwordHint" class="hint"></small>
+
 
     <button type="submit">Save User</button>
   </form>
@@ -37,6 +41,52 @@
 </div>
 
 <script>
+/* ======================
+   LIVE USERNAME VALIDATION
+====================== */
+$("#login").on("input", function () {
+  const login = $(this).val();
+  const loginRegex = /^[A-Za-z]{8}$/;
+
+  if (loginRegex.test(login)) {
+    $("#loginHint")
+      .text("✔ Valid username")
+      .removeClass("error")
+      .addClass("success");
+  } else {
+    $("#loginHint")
+      .text("Username must be exactly 8 letters (A–Z only)")
+      .removeClass("success")
+      .addClass("error");
+  }
+});
+
+/* ======================
+   LIVE PASSWORD VALIDATION
+====================== */
+$("#password").on("input", function () {
+  const password = $(this).val();
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?#&]).{8,}$/;
+
+  if (passwordRegex.test(password)) {
+    $("#passwordHint")
+      .text("✔ Strong password")
+      .removeClass("error")
+      .addClass("success");
+  } else {
+    $("#passwordHint")
+      .html(
+        "Password must contain:<br>• 1 uppercase<br>• 1 lowercase<br>• 1 number<br>• 1 special character<br>• Min 8 characters"
+      )
+      .removeClass("success")
+      .addClass("error");
+  }
+});
+
+/* ======================
+   FORM SUBMIT
+====================== */
 $("#userForm").submit(function(e){
   e.preventDefault();
 
@@ -58,35 +108,31 @@ $("#userForm").submit(function(e){
   };
 
   $.ajax({
-    url: "https://node-api-task-nl8e.onrender.com/api/users/add",   // ✅ RENDER URL
+    url: "https://node-api-task-nl8e.onrender.com/api/users/add",
     type: "POST",
     contentType: "application/json",
     data: JSON.stringify(data),
 
-    success: function (res) {
-      $("#msg")
-        .css("color", "green")
-        .text("User added successfully ✅");
-
+    success: function () {
+      $("#msg").css("color","green").text("User added successfully ✅");
       $("#userForm")[0].reset();
+      $("#loginHint").text("");
+      $("#passwordHint").text("");
     },
 
     error: function (err) {
-      console.error(err);
-
       let message =
         err.responseJSON?.error ||
         err.responseJSON?.message ||
         err.responseText ||
         "Something went wrong";
 
-      $("#msg")
-        .css("color", "red")
-        .text(message);
+      $("#msg").css("color","red").text(message);
     }
   });
 });
 </script>
+
 
 </body>
 </html>
