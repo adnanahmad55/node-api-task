@@ -60,6 +60,17 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io("https://node-api-task-nl8e.onrender.com");
+
+  // 🔥 GET LOGGED USER FROM localStorage
+  const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
+
+  // If user not logged in → redirect back
+  if (!loggedUser) {
+    window.location.href = "index.html";
+  } else {
+    // 🔥 JOIN LIVE USERS ON PAGE LOAD
+    socket.emit("join_live_users", loggedUser);
+  }
 </script>
 
 <script>

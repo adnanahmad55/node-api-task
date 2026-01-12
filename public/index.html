@@ -58,14 +58,10 @@
 
 </div>
 
-<!-- SOCKET.IO -->
+<!-- SOCKET.IO (connection only, no join here) -->
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io("https://node-api-task-nl8e.onrender.com");
-
-  socket.on("live_users_list", (users) => {
-    console.log("🟢 Live Users:", users);
-  });
 </script>
 
 <script>
@@ -79,7 +75,8 @@ $("#login").on("input", function () {
   if (loginRegex.test(login)) {
     $("#loginHint").text("✔ Valid login").addClass("success").removeClass("error");
   } else {
-    $("#loginHint").text("Login must be exactly 8 characters").addClass("error").removeClass("success");
+    $("#loginHint").text("Login must be exactly 8 characters")
+      .addClass("error").removeClass("success");
   }
 });
 
@@ -92,9 +89,11 @@ $("#password").on("input", function () {
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{6,}$/;
 
   if (passwordRegex.test(password)) {
-    $("#passwordHint").text("✔ Strong password").addClass("success").removeClass("error");
+    $("#passwordHint").text("✔ Strong password")
+      .addClass("success").removeClass("error");
   } else {
-    $("#passwordHint").text("Weak password").addClass("error").removeClass("success");
+    $("#passwordHint").text("Weak password")
+      .addClass("error").removeClass("success");
   }
 });
 
@@ -126,14 +125,14 @@ $("#userForm").submit(function (e) {
     data: JSON.stringify(data),
 
     success: function () {
-      $("#msg").css("color", "green").text("User registered successfully ✅");
+      $("#msg").css("color", "green")
+        .text("User registered successfully ✅");
       $("#userForm")[0].reset();
     },
 
     error: function (err) {
-      $("#msg").css("color", "red").text(
-        err.responseJSON?.message || err.responseText
-      );
+      $("#msg").css("color", "red")
+        .text(err.responseJSON?.message || err.responseText);
     }
   });
 });
@@ -154,25 +153,28 @@ $("#loginForm").submit(function (e) {
     data: JSON.stringify({ email, password }),
 
     success: function (res) {
-      $("#loginMsg").css("color", "green").text("Login successful ✅");
+      $("#loginMsg").css("color", "green")
+        .text("Login successful ✅");
 
-      // 🔥 SOCKET JOIN AFTER LOGIN
-      socket.emit("join_live_users", {
-        email: res.user.email,
-        firstName: res.user.firstName,
-        lastName: res.user.lastName
-      });
+      // 🔥 SAVE USER FOR NEXT PAGE (IMPORTANT)
+      localStorage.setItem(
+        "loggedUser",
+        JSON.stringify({
+          email: res.user.email,
+          firstName: res.user.firstName,
+          lastName: res.user.lastName
+        })
+      );
 
-      // 🔥 REDIRECT TO LIVE USERS PAGE
+      // 🔥 REDIRECT
       setTimeout(() => {
         window.location.href = "list.html";
-      }, 800);
+      }, 500);
     },
 
     error: function (err) {
-      $("#loginMsg").css("color", "red").text(
-        err.responseJSON?.message || "Login failed"
-      );
+      $("#loginMsg").css("color", "red")
+        .text(err.responseJSON?.message || "Login failed");
     }
   });
 });
