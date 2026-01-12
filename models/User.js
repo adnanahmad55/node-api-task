@@ -7,42 +7,52 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+
     lastName: {
       type: String,
       required: true,
       trim: true,
     },
+
     mobile: {
       type: String,
       required: true,
-      match: /^[0-9]{10}$/,
+      match: /^[0-9]{10}$/, // 10 digit mobile number
     },
+
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
       match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     },
+
     address: {
-      street: String,
-      city: String,
-      state: String,
-      country: String,
+      street: { type: String },
+      city: { type: String },
+      state: { type: String },
+      country: { type: String },
     },
+
     login: {
       type: String,
       required: true,
-      match: /^[a-zA-Z0-9]{8}$/,
+      unique: true,
+      trim: true,
+      match: /^[a-zA-Z0-9]{8}$/, // exactly 8 characters
     },
+
+    // 🔐 Password will be stored as bcrypt hash
+    // ❌ No regex here (bcrypt hash won't match regex)
     password: {
       type: String,
       required: true,
-      match: /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{6,}$/,
     },
   },
   {
-    timestamps: true, // creates createdAt & updatedAt
+    timestamps: true, // createdAt & updatedAt
   }
 );
 

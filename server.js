@@ -4,64 +4,84 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const http = require("http");
-// INIT APP FIRST
-const app = express();
 const { Server } = require("socket.io");
 
+require("dotenv").config();
+
+// =====================
+// INIT APP
+// =====================
+const app = express();
+const server = http.createServer(app);
+
+// =====================
 // MIDDLEWARES
+// =====================
 app.use(bodyParser.json());
 app.use(cors());
-app.use(express.static("public"));
 app.use(express.static(path.join(__dirname, "public")));
 
+// =====================
 // ROUTES
+// =====================
 const userRoutes = require("./routes/userRoutes");
 app.use("/api/users", userRoutes);
 
+// =====================
 // MONGODB CONNECTION
+// =====================
 mongoose
-  .connect(
-    process.env.MONGO_URL
-  )
-  .then(() => console.log("✅ MongoDB Connected (Atlas)"))
+  .connect(process.env.MONGO_URL)
+  .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.log("❌ MongoDB Error:", err));
 
-// TEST ROUTE
+// =====================
+// ROOT ROUTE
+// =====================
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// SERVER
-const server = http.createServer(app);
-
+// =====================
+// SOCKET.IO SETUP
+// =====================
 const io = new Server(server, {
   cors: {
     origin: "*",
+    methods: ["GET", "POST"],
   },
 });
+
+// 🔥 Store live users
 let liveUsers = [];
+
 io.on("connection", (socket) => {
   console.log("🟢 User connected:", socket.id);
 
-socket.on("join_live_users", (user) => {
-  socket.join("live_users");
+  // =====================
+  // USER JOINS AFTER LOGIN
+  // =====================
+  socket.on("join_live_users", (user) => {
+    if (!user?.email) return;
 
-  const alreadyExists = liveUsers.find(
-    (u) => u.email === user.email
-  );
+    const alreadyExists = liveUsers.find(
+      (u) => u.email === user.email
+    );
 
-  if (!alreadyExists) {
-    liveUsers.push({
-      socketId: socket.id,
-      email: user.email,
-      name: user.firstName + " " + user.lastName,
-    });
-  }
+    if (!alreadyExists) {
+      liveUsers.push({
+        socketId: socket.id,
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`,
+      });
+    }
 
-  io.to("live_users").emit("live_users_list", liveUsers);
-});
+    io.emit("live_users_list", liveUsers);
+  });
 
-
+  // =====================
+  // USER DISCONNECT
+  // =====================
   socket.on("disconnect", () => {
     console.log("🔴 User disconnected:", socket.id);
 
@@ -69,11 +89,15 @@ socket.on("join_live_users", (user) => {
       (u) => u.socketId !== socket.id
     );
 
-    io.to("live_users").emit("live_users_list", liveUsers);
+    io.emit("live_users_list", liveUsers);
   });
 });
-const PORT = 5000;
+
+// =====================
+// START SERVER
+// =====================
+const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  console.log(`🚀 Server running with Socket.io on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

@@ -13,6 +13,10 @@ body {
   align-items: center;
 }
 
+/* =========================
+   CONTAINERS
+========================= */
+
 .container {
   background: #fff;
   padding: 25px 30px;
@@ -21,11 +25,32 @@ body {
   box-shadow: 0 15px 30px rgba(0,0,0,0.2);
 }
 
+.table-container {
+  width: 90%;
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+/* =========================
+   HEADINGS
+========================= */
+
 h2 {
   text-align: center;
   margin-bottom: 20px;
   color: #333;
 }
+
+hr {
+  margin: 25px 0;
+  border: none;
+  border-top: 1px solid #ddd;
+}
+
+/* =========================
+   FORM ELEMENTS
+========================= */
 
 input {
   width: 100%;
@@ -33,6 +58,12 @@ input {
   margin-bottom: 12px;
   border-radius: 5px;
   border: 1px solid #ccc;
+  transition: border 0.2s ease;
+}
+
+input:focus {
+  outline: none;
+  border-color: #667eea;
 }
 
 button {
@@ -50,18 +81,43 @@ button:hover {
   background: #5a67d8;
 }
 
-#msg {
+/* =========================
+   MESSAGES
+========================= */
+
+#msg,
+#loginMsg {
   text-align: center;
   margin-top: 10px;
   font-weight: bold;
 }
 
-.table-container {
-  width: 90%;
-  background: #fff;
-  padding: 20px;
-  border-radius: 10px;
+/* =========================
+   NAV BAR
+========================= */
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
 }
+
+.nav a {
+  text-decoration: none;
+  padding: 8px 14px;
+  background: #667eea;
+  color: #fff;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.nav a:hover {
+  background: #5a67d8;
+}
+
+/* =========================
+   TABLE
+========================= */
 
 table {
   width: 100%;
@@ -82,24 +138,11 @@ th {
 tr:hover {
   background: #f1f1f1;
 }
-.nav {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
-}
 
-.nav a {
-  text-decoration: none;
-  padding: 8px 14px;
-  background: #667eea;
-  color: #fff;
-  border-radius: 5px;
-  font-size: 14px;
-}
+/* =========================
+   HINTS (VALIDATION)
+========================= */
 
-.nav a:hover {
-  background: #5a67d8;
-}
 .hint {
   display: block;
   font-size: 12px;
@@ -113,8 +156,9 @@ tr:hover {
 .hint.success {
   color: green;
 }
+
 /* =========================
-   LIVE USERS (TASK 2)
+   LIVE USERS (SOCKET)
 ========================= */
 
 .live-box {
@@ -137,7 +181,6 @@ tr:hover {
   overflow-y: auto;
 }
 
-/* Individual live user */
 .live-user {
   padding: 10px;
   margin-bottom: 8px;

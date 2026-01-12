@@ -28,7 +28,7 @@
 <div class="table-container">
 
   <div class="nav">
-    <a href="index.html">Add New User</a>
+    <a href="index.html">Add / Login User</a>
     <span></span>
   </div>
 
@@ -48,7 +48,7 @@
 
   <p id="msg" style="text-align:center; margin-top:10px;"></p>
 
-  <!-- 🔥 LIVE USERS (TASK 2) -->
+  <!-- 🔥 LIVE USERS -->
   <div class="live-box">
     <h3>Live Connected Users</h3>
     <div id="liveUsers"></div>
@@ -56,25 +56,17 @@
 
 </div>
 
-<!-- 🔥 SOCKET.IO -->
+<!-- SOCKET.IO -->
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io("https://node-api-task-nl8e.onrender.com");
-
-  // 🔥 JOIN LIVE_USERS ROOM ON LIST PAGE LOAD
-  socket.emit("join_live_users", {
-    email: "list@viewer.com",
-    firstName: "List",
-    lastName: "Viewer"
-  });
 </script>
 
 <script>
 /* ======================
-   LOAD ALL USERS (TASK 1)
+   LOAD ALL USERS
 ====================== */
-$(document).ready(function(){
-
+$(document).ready(function () {
   $.ajax({
     url: "https://node-api-task-nl8e.onrender.com/api/users/all",
     type: "GET",
@@ -103,11 +95,10 @@ $(document).ready(function(){
       $("#msg").css("color", "red").text("Failed to load users");
     }
   });
-
 });
 
 /* ======================
-   SOCKET LIVE USERS (TASK 2)
+   LIVE USERS FROM SOCKET
 ====================== */
 socket.on("live_users_list", function (users) {
   const container = $("#liveUsers");
@@ -121,15 +112,15 @@ socket.on("live_users_list", function (users) {
   users.forEach(u => {
     container.append(`
       <div class="live-user" onclick="showUser('${u.email}')">
-        <strong>${u.email}</strong><br>
-        <small>Socket ID: ${u.socketId}</small>
+        <strong>${u.name}</strong><br>
+        <small>${u.email}</small>
       </div>
     `);
   });
 });
 
 /* ======================
-   CLICK → API → POPUP
+   CLICK LIVE USER → DETAILS
 ====================== */
 function showUser(email) {
   $.ajax({

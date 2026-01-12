@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Add New User</title>
+  <title>User Register & Login</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
@@ -14,7 +14,10 @@
     <a href="list.html">Show All Users</a>
   </div>
 
-  <h2>Add New User</h2>
+  <!-- =========================
+       REGISTER SECTION
+  ========================== -->
+  <h2>Add New User (Register)</h2>
 
   <form id="userForm">
     <input type="text" placeholder="First Name" id="firstName" required>
@@ -37,33 +40,46 @@
   </form>
 
   <p id="msg"></p>
+
+  <hr>
+
+  <!-- =========================
+       LOGIN SECTION
+  ========================== -->
+  <h2>Login</h2>
+
+  <form id="loginForm">
+    <input type="email" placeholder="Email" id="loginEmail" required>
+    <input type="password" placeholder="Password" id="loginPassword" required>
+    <button type="submit">Login</button>
+  </form>
+
+  <p id="loginMsg"></p>
+
 </div>
 
-<!-- 🔥 SOCKET.IO CLIENT (MUST BE BEFORE MAIN SCRIPT) -->
+<!-- SOCKET.IO -->
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  // Render backend URL
   const socket = io("https://node-api-task-nl8e.onrender.com");
+
+  socket.on("live_users_list", (users) => {
+    console.log("🟢 Live Users:", users);
+  });
 </script>
 
 <script>
 /* ======================
-   LIVE USERNAME VALIDATION
+   LIVE LOGIN VALIDATION
 ====================== */
 $("#login").on("input", function () {
   const login = $(this).val();
-  const loginRegex = /^[A-Za-z]{8}$/;
+  const loginRegex = /^[A-Za-z0-9]{8}$/;
 
   if (loginRegex.test(login)) {
-    $("#loginHint")
-      .text("✔ Valid username")
-      .removeClass("error")
-      .addClass("success");
+    $("#loginHint").text("✔ Valid login").addClass("success").removeClass("error");
   } else {
-    $("#loginHint")
-      .text("Username must be exactly 8 letters (A–Z only)")
-      .removeClass("success")
-      .addClass("error");
+    $("#loginHint").text("Login must be exactly 8 characters").addClass("error").removeClass("success");
   }
 });
 
@@ -73,30 +89,20 @@ $("#login").on("input", function () {
 $("#password").on("input", function () {
   const password = $(this).val();
   const passwordRegex =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?#&]).{8,}$/;
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{6,}$/;
 
   if (passwordRegex.test(password)) {
-    $("#passwordHint")
-      .text("✔ Strong password")
-      .removeClass("error")
-      .addClass("success");
+    $("#passwordHint").text("✔ Strong password").addClass("success").removeClass("error");
   } else {
-    $("#passwordHint")
-      .html(
-        "Password must contain:<br>• 1 uppercase<br>• 1 lowercase<br>• 1 number<br>• 1 special character<br>• Min 8 characters"
-      )
-      .removeClass("success")
-      .addClass("error");
+    $("#passwordHint").text("Weak password").addClass("error").removeClass("success");
   }
 });
 
 /* ======================
-   FORM SUBMIT
+   REGISTER FORM SUBMIT
 ====================== */
 $("#userForm").submit(function (e) {
   e.preventDefault();
-
-  $("#msg").text("");
 
   const data = {
     firstName: $("#firstName").val().trim(),
@@ -120,28 +126,48 @@ $("#userForm").submit(function (e) {
     data: JSON.stringify(data),
 
     success: function () {
-
-      // 🔥 SOCKET ROOM JOIN AFTER DB INSERT
-      socket.emit("join_live_users", {
-        email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName
-      });
-
-      $("#msg").css("color", "green").text("User added successfully ✅");
+      $("#msg").css("color", "green").text("User registered successfully ✅");
       $("#userForm")[0].reset();
-      $("#loginHint").text("");
-      $("#passwordHint").text("");
     },
 
     error: function (err) {
-      let message =
-        err.responseJSON?.error ||
-        err.responseJSON?.message ||
-        err.responseText ||
-        "Something went wrong";
+      $("#msg").css("color", "red").text(
+        err.responseJSON?.message || err.responseText
+      );
+    }
+  });
+});
 
-      $("#msg").css("color", "red").text(message);
+/* ======================
+   LOGIN FORM SUBMIT
+====================== */
+$("#loginForm").submit(function (e) {
+  e.preventDefault();
+
+  const email = $("#loginEmail").val().trim();
+  const password = $("#loginPassword").val();
+
+  $.ajax({
+    url: "https://node-api-task-nl8e.onrender.com/api/users/login",
+    type: "POST",
+    contentType: "application/json",
+    data: JSON.stringify({ email, password }),
+
+    success: function (res) {
+      $("#loginMsg").css("color", "green").text("Login successful ✅");
+
+      // 🔥 SOCKET JOIN AFTER LOGIN (CORRECT)
+      socket.emit("join_live_users", {
+        email: res.user.email,
+        firstName: res.user.firstName,
+        lastName: res.user.lastName
+      });
+    },
+
+    error: function (err) {
+      $("#loginMsg").css("color", "red").text(
+        err.responseJSON?.message || "Login failed"
+      );
     }
   });
 });
