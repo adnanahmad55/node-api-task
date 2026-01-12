@@ -36,10 +36,17 @@ mongoose
   .catch((err) => console.log("❌ MongoDB Error:", err));
 
 // =====================
+// HEALTH CHECK (🔥 VERY IMPORTANT FOR RENDER)
+// =====================
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
+// =====================
 // ROOT ROUTE
 // =====================
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.send("🚀 Server is running");
 });
 
 // =====================
@@ -58,9 +65,7 @@ let liveUsers = [];
 io.on("connection", (socket) => {
   console.log("🟢 User connected:", socket.id);
 
-  // =====================
   // USER JOINS AFTER LOGIN
-  // =====================
   socket.on("join_live_users", (user) => {
     if (!user?.email) return;
 
@@ -79,9 +84,7 @@ io.on("connection", (socket) => {
     io.emit("live_users_list", liveUsers);
   });
 
-  // =====================
   // USER DISCONNECT
-  // =====================
   socket.on("disconnect", () => {
     console.log("🔴 User disconnected:", socket.id);
 
@@ -94,10 +97,10 @@ io.on("connection", (socket) => {
 });
 
 // =====================
-// START SERVER
+// START SERVER (🔥 RENDER SAFE)
 // =====================
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
