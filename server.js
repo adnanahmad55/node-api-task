@@ -36,7 +36,7 @@ mongoose
   .catch((err) => console.log("❌ MongoDB Error:", err));
 
 // =====================
-// HEALTH CHECK (🔥 VERY IMPORTANT FOR RENDER)
+// HEALTH CHECK (RENDER SAFE)
 // =====================
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
@@ -59,45 +59,63 @@ const io = new Server(server, {
   },
 });
 
-// 🔥 Store live users
-let liveUsers = [];
+/**
+ * liveUsers = {
+ *   userId/email : socketId
+ * }
+ */
+const liveUsers = {};
 
 io.on("connection", (socket) => {
   console.log("🟢 User connected:", socket.id);
 
-  // USER JOINS AFTER LOGIN
-  socket.on("join_live_users", (user) => {
+  // =====================
+  // USER JOIN (AFTER LOGIN)
+  // =====================
+  socket.on("join", (user) => {
     if (!user?.email) return;
 
-    const alreadyExists = liveUsers.find(
-      (u) => u.email === user.email
-    );
+    liveUsers[user.email] = socket.id;
 
-    if (!alreadyExists) {
-      liveUsers.push({
-        socketId: socket.id,
-        email: user.email,
-        name: `${user.firstName} ${user.lastName}`,
-      });
-    }
+    console.log("✅ User joined:", user.email);
 
-    io.emit("live_users_list", liveUsers);
+    io.emit("live_users_list", Object.keys(liveUsers));
   });
 
+  // =====================
+  // SEND MESSAGE (1-to-1)
+  // =====================
+  socket.on("send_message", ({ senderEmail, receiverEmail, message }) => {
+    const receiverSocketId = liveUsers[receiverEmail];
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("receive_message", {
+        senderEmail,
+        message,
+        time: new Date(),
+      });
+    }
+  });
+
+  // =====================
   // USER DISCONNECT
+  // =====================
   socket.on("disconnect", () => {
     console.log("🔴 User disconnected:", socket.id);
 
-    liveUsers = liveUsers.filter(
-      (u) => u.socketId !== socket.id
-    );
+    for (let email in liveUsers) {
+      if (liveUsers[email] === socket.id) {
+        delete liveUsers[email];
+        break;
+      }
+    }
 
-    io.emit("live_users_list", liveUsers);
+    io.emit("live_users_list", Object.keys(liveUsers));
   });
 });
 
 // =====================
-// START SERVER (🔥 RENDER SAFE)
+// START SERVER (RENDER SAFE)
 // =====================
 const PORT = process.env.PORT || 10000;
 
