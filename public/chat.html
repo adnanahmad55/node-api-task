@@ -5,13 +5,12 @@
   <title>Chat App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Socket.IO -->
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
     * {
       box-sizing: border-box;
-      font-family: Arial, sans-serif;
+      font-family: "Segoe UI", sans-serif;
     }
 
     body {
@@ -21,8 +20,44 @@
       background: #f0f2f5;
     }
 
+    /* ===== LEFT SIDEBAR ===== */
+    .sidebar {
+      width: 25%;
+      background: #ffffff;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      padding: 15px;
+      background: #667eea;
+      color: white;
+      font-weight: bold;
+    }
+
+    .user {
+      padding: 12px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+
+    .user:hover {
+      background: #f5f5f5;
+    }
+
+    .online-dot {
+      height: 8px;
+      width: 8px;
+      background: green;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    /* ===== CHAT AREA ===== */
     .chat {
-      width: 100%;
+      width: 75%;
       display: flex;
       flex-direction: column;
     }
@@ -43,20 +78,23 @@
 
     .msg {
       max-width: 60%;
-      padding: 10px;
+      padding: 10px 14px;
       margin-bottom: 10px;
       border-radius: 8px;
       clear: both;
+      font-size: 14px;
     }
 
     .left {
-      background: #fff;
+      background: #ffffff;
       float: left;
+      border-top-left-radius: 0;
     }
 
     .right {
       background: #dcf8c6;
       float: right;
+      border-top-right-radius: 0;
     }
 
     .chat-input {
@@ -68,18 +106,19 @@
 
     .chat-input input {
       flex: 1;
-      padding: 10px;
+      padding: 12px;
       border: 1px solid #ccc;
-      border-radius: 4px;
+      border-radius: 20px;
+      outline: none;
     }
 
     .chat-input button {
       margin-left: 10px;
-      padding: 10px 20px;
+      padding: 10px 18px;
       background: #667eea;
       color: white;
       border: none;
-      border-radius: 4px;
+      border-radius: 50%;
       cursor: pointer;
     }
   </style>
@@ -87,60 +126,57 @@
 
 <body>
 
+<!-- ===== LEFT USERS (STATIC for now) ===== -->
+<div class="sidebar">
+  <div class="sidebar-header">Chats</div>
+  <div class="user">
+    <span class="online-dot"></span>
+    Chat Active
+  </div>
+</div>
+
+<!-- ===== CHAT AREA ===== -->
 <div class="chat">
   <div class="chat-header" id="chatHeader">Chat</div>
   <div class="messages" id="messages"></div>
 
   <div class="chat-input">
     <input type="text" id="messageInput" placeholder="Type a message..." />
-    <button onclick="sendMessage()">Send</button>
+    <button onclick="sendMessage()">➤</button>
   </div>
 </div>
 
 <script>
   const socket = io("https://node-api-task-nl8e.onrender.com");
 
-  // ✅ GET LOGGED USER
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
-  if (!loggedUser || !loggedUser.email) {
-    alert("Please login again");
+  if (!loggedUser) {
     window.location.href = "index.html";
   }
 
-  // ✅ GET RECEIVER FROM URL
   const params = new URLSearchParams(window.location.search);
   const receiverEmail = params.get("email");
 
-  if (!receiverEmail) {
-    alert("No chat user selected");
-    window.location.href = "list.html";
-  }
-
-  // HEADER
   document.getElementById("chatHeader").innerText =
     "Chat with " + receiverEmail;
 
-  // 🔥 JOIN SOCKET
   socket.emit("join", { email: loggedUser.email });
 
-  // SEND MESSAGE
   function sendMessage() {
     const input = document.getElementById("messageInput");
     const message = input.value.trim();
-
     if (!message) return;
 
     socket.emit("send_message", {
       senderEmail: loggedUser.email,
-      receiverEmail: receiverEmail,
-      message: message
+      receiverEmail,
+      message
     });
 
     appendMessage(message, "right");
     input.value = "";
   }
 
-  // RECEIVE MESSAGE
   socket.on("receive_message", (data) => {
     if (data.senderEmail === receiverEmail) {
       appendMessage(data.message, "left");
@@ -148,12 +184,12 @@
   });
 
   function appendMessage(text, side) {
-    const msgDiv = document.createElement("div");
-    msgDiv.className = `msg ${side}`;
-    msgDiv.innerText = text;
+    const div = document.createElement("div");
+    div.className = `msg ${side}`;
+    div.innerText = text;
 
     const messages = document.getElementById("messages");
-    messages.appendChild(msgDiv);
+    messages.appendChild(div);
     messages.scrollTop = messages.scrollHeight;
   }
 </script>

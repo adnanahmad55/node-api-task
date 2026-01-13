@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
+const Message = require("./models/Message");
 
 require("dotenv").config();
 
@@ -60,57 +61,92 @@ const io = new Server(server, {
 });
 
 /**
- * liveUsers = {
- *   userId/email : socketId
- * }
+ * onlineUsers = Map
+ * email -> socketId
  */
-const liveUsers = {};
+const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
   console.log("🟢 User connected:", socket.id);
 
   // =====================
-  // USER JOIN (AFTER LOGIN)
+  // USER JOIN
   // =====================
-  socket.on("join", (user) => {
-    if (!user?.email) return;
+  socket.on("join", async ({ email }) => {
+    if (!email) return;
 
-    liveUsers[user.email] = socket.id;
+    onlineUsers.set(email, socket.id);
+    console.log("✅ User joined:", email);
 
-    console.log("✅ User joined:", user.email);
+    // 🔥 SEND PENDING (OFFLINE) MESSAGES
+    const pendingMessages = await Message.find({
+      receiverEmail: email,
+      delivered: false,
+    }).sort({ createdAt: 1 });
 
-    io.emit("live_users_list", Object.keys(liveUsers));
-  });
-
-  // =====================
-  // SEND MESSAGE (1-to-1)
-  // =====================
-  socket.on("send_message", ({ senderEmail, receiverEmail, message }) => {
-    const receiverSocketId = liveUsers[receiverEmail];
-
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("receive_message", {
-        senderEmail,
-        message,
-        time: new Date(),
+    pendingMessages.forEach((msg) => {
+      socket.emit("receive_message", {
+        senderEmail: msg.senderEmail,
+        message: msg.message,
+        time: msg.createdAt,
       });
-    }
+    });
+
+    // mark as delivered
+    await Message.updateMany(
+      { receiverEmail: email, delivered: false },
+      { delivered: true }
+    );
+
+    // update live users list
+    io.emit("live_users_list", Array.from(onlineUsers.keys()));
   });
+
+  // =====================
+  // SEND MESSAGE (ONLINE + OFFLINE)
+  // =====================
+  socket.on(
+    "send_message",
+    async ({ senderEmail, receiverEmail, message }) => {
+      if (!senderEmail || !receiverEmail || !message) return;
+
+      // 🔥 SAVE MESSAGE FIRST
+      const msg = await Message.create({
+        senderEmail,
+        receiverEmail,
+        message,
+        delivered: false,
+      });
+
+      // 🔥 IF RECEIVER ONLINE → SEND
+      if (onlineUsers.has(receiverEmail)) {
+        io.to(onlineUsers.get(receiverEmail)).emit("receive_message", {
+          senderEmail,
+          message,
+          time: msg.createdAt,
+        });
+
+        msg.delivered = true;
+        await msg.save();
+      }
+    }
+  );
 
   // =====================
   // USER DISCONNECT
   // =====================
   socket.on("disconnect", () => {
-    console.log("🔴 User disconnected:", socket.id);
+    console.log("🔴 Socket disconnected:", socket.id);
 
-    for (let email in liveUsers) {
-      if (liveUsers[email] === socket.id) {
-        delete liveUsers[email];
+    for (let [email, socketId] of onlineUsers.entries()) {
+      if (socketId === socket.id) {
+        onlineUsers.delete(email);
+        console.log("❌ User offline:", email);
         break;
       }
     }
 
-    io.emit("live_users_list", Object.keys(liveUsers));
+    io.emit("live_users_list", Array.from(onlineUsers.keys()));
   });
 });
 
