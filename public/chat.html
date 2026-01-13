@@ -20,7 +20,7 @@
       background: #f0f2f5;
     }
 
-    /* ===== LEFT SIDEBAR ===== */
+    /* ===== SIDEBAR ===== */
     .sidebar {
       width: 25%;
       background: #ffffff;
@@ -36,13 +36,13 @@
       font-weight: bold;
     }
 
-    .user {
+    .chat-user {
       padding: 12px 15px;
       cursor: pointer;
       border-bottom: 1px solid #eee;
     }
 
-    .user:hover {
+    .chat-user:hover {
       background: #f5f5f5;
     }
 
@@ -66,7 +66,6 @@
       padding: 15px;
       background: #667eea;
       color: white;
-      font-size: 16px;
     }
 
     .messages {
@@ -81,20 +80,18 @@
       padding: 10px 14px;
       margin-bottom: 10px;
       border-radius: 8px;
-      clear: both;
       font-size: 14px;
+      clear: both;
     }
 
     .left {
-      background: #ffffff;
+      background: #fff;
       float: left;
-      border-top-left-radius: 0;
     }
 
     .right {
       background: #dcf8c6;
       float: right;
-      border-top-right-radius: 0;
     }
 
     .chat-input {
@@ -107,8 +104,8 @@
     .chat-input input {
       flex: 1;
       padding: 12px;
-      border: 1px solid #ccc;
       border-radius: 20px;
+      border: 1px solid #ccc;
       outline: none;
     }
 
@@ -126,18 +123,15 @@
 
 <body>
 
-<!-- ===== LEFT USERS (STATIC for now) ===== -->
+<!-- ===== SIDEBAR ===== -->
 <div class="sidebar">
   <div class="sidebar-header">Chats</div>
-  <div class="user">
-    <span class="online-dot"></span>
-    Chat Active
-  </div>
+  <div id="chatUsers"></div>
 </div>
 
-<!-- ===== CHAT AREA ===== -->
+<!-- ===== CHAT ===== -->
 <div class="chat">
-  <div class="chat-header" id="chatHeader">Chat</div>
+  <div class="chat-header" id="chatHeader">Select a chat</div>
   <div class="messages" id="messages"></div>
 
   <div class="chat-input">
@@ -150,26 +144,63 @@
   const socket = io("https://node-api-task-nl8e.onrender.com");
 
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
-  if (!loggedUser) {
-    window.location.href = "index.html";
-  }
+  if (!loggedUser) location.href = "index.html";
 
-  const params = new URLSearchParams(window.location.search);
-  const receiverEmail = params.get("email");
-
-  document.getElementById("chatHeader").innerText =
-    "Chat with " + receiverEmail;
+  let activeUser = null;
 
   socket.emit("join", { email: loggedUser.email });
 
+  // ======================
+  // LOAD LEFT SIDEBAR USERS
+  // ======================
+  fetch(`/api/chat/users/${loggedUser.email}`)
+    .then(res => res.json())
+    .then(users => {
+      const container = document.getElementById("chatUsers");
+      container.innerHTML = "";
+
+      users.forEach(email => {
+        const div = document.createElement("div");
+        div.className = "chat-user";
+        div.innerText = email;
+        div.onclick = () => openChat(email);
+        container.appendChild(div);
+      });
+    });
+
+  // ======================
+  // OPEN CHAT + LOAD HISTORY
+  // ======================
+  function openChat(email) {
+    activeUser = email;
+    document.getElementById("chatHeader").innerText =
+      "Chat with " + email;
+
+    document.getElementById("messages").innerHTML = "";
+
+    fetch(`/api/chat/messages/${loggedUser.email}/${email}`)
+      .then(res => res.json())
+      .then(messages => {
+        messages.forEach(m => {
+          appendMessage(
+            m.message,
+            m.senderEmail === loggedUser.email ? "right" : "left"
+          );
+        });
+      });
+  }
+
+  // ======================
+  // SEND MESSAGE
+  // ======================
   function sendMessage() {
     const input = document.getElementById("messageInput");
     const message = input.value.trim();
-    if (!message) return;
+    if (!message || !activeUser) return;
 
     socket.emit("send_message", {
       senderEmail: loggedUser.email,
-      receiverEmail,
+      receiverEmail: activeUser,
       message
     });
 
@@ -177,8 +208,11 @@
     input.value = "";
   }
 
-  socket.on("receive_message", (data) => {
-    if (data.senderEmail === receiverEmail) {
+  // ======================
+  // RECEIVE MESSAGE
+  // ======================
+  socket.on("receive_message", data => {
+    if (data.senderEmail === activeUser) {
       appendMessage(data.message, "left");
     }
   });

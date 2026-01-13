@@ -2,10 +2,11 @@ const mongoose = require("mongoose");
 
 const messageSchema = new mongoose.Schema(
   {
-    senderEmail: { type: String, required: true },
-    receiverEmail: { type: String, required: true },
-    message: { type: String, required: true },
-    delivered: { type: Boolean, default: false }
+    senderEmail: String,
+    receiverEmail: String,
+    message: String,
+    delivered: Boolean,
+    read: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

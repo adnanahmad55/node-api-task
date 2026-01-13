@@ -5,8 +5,10 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
-const Message = require("./models/Message");
 
+const Message = require("./models/Message");
+const userRoutes = require("./routes/userRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 require("dotenv").config();
 
 // =====================
@@ -18,6 +20,7 @@ const server = http.createServer(app);
 // =====================
 // MIDDLEWARES
 // =====================
+app.use("/api/chat", chatRoutes);
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
@@ -25,7 +28,6 @@ app.use(express.static(path.join(__dirname, "public")));
 // =====================
 // ROUTES
 // =====================
-const userRoutes = require("./routes/userRoutes");
 app.use("/api/users", userRoutes);
 
 // =====================
@@ -51,6 +53,53 @@ app.get("/", (req, res) => {
 });
 
 // =====================
+// CHAT APIs (FOR UI)
+// =====================
+
+// 🔹 LEFT SIDEBAR – USERS I CHATTED WITH
+app.get("/api/chat/users/:email", async (req, res) => {
+  try {
+    const email = req.params.email;
+
+    const chats = await Message.find({
+      $or: [{ senderEmail: email }, { receiverEmail: email }],
+    }).select("senderEmail receiverEmail");
+
+    const users = new Set();
+
+    chats.forEach((c) => {
+      if (c.senderEmail !== email) users.add(c.senderEmail);
+      if (c.receiverEmail !== email) users.add(c.receiverEmail);
+    });
+
+    res.json([...users]);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to load chat users" });
+  }
+});
+
+// 🔹 MESSAGE HISTORY (RIGHT CHAT)
+app.get(
+  "/api/chat/messages/:userEmail/:otherEmail",
+  async (req, res) => {
+    try {
+      const { userEmail, otherEmail } = req.params;
+
+      const messages = await Message.find({
+        $or: [
+          { senderEmail: userEmail, receiverEmail: otherEmail },
+          { senderEmail: otherEmail, receiverEmail: userEmail },
+        ],
+      }).sort({ createdAt: 1 });
+
+      res.json(messages);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to load messages" });
+    }
+  }
+);
+
+// =====================
 // SOCKET.IO SETUP
 // =====================
 const io = new Server(server, {
@@ -61,13 +110,13 @@ const io = new Server(server, {
 });
 
 /**
- * onlineUsers = Map
+ * onlineUsers
  * email -> socketId
  */
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
-  console.log("🟢 User connected:", socket.id);
+  console.log("🟢 Socket connected:", socket.id);
 
   // =====================
   // USER JOIN
@@ -76,9 +125,9 @@ io.on("connection", (socket) => {
     if (!email) return;
 
     onlineUsers.set(email, socket.id);
-    console.log("✅ User joined:", email);
+    console.log("✅ User online:", email);
 
-    // 🔥 SEND PENDING (OFFLINE) MESSAGES
+    // 🔥 SEND OFFLINE (UNDELIVERED) MESSAGES
     const pendingMessages = await Message.find({
       receiverEmail: email,
       delivered: false,
@@ -92,25 +141,25 @@ io.on("connection", (socket) => {
       });
     });
 
-    // mark as delivered
+    // mark delivered
     await Message.updateMany(
       { receiverEmail: email, delivered: false },
       { delivered: true }
     );
 
-    // update live users list
+    // update online list
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
   });
 
   // =====================
-  // SEND MESSAGE (ONLINE + OFFLINE)
+  // SEND MESSAGE
   // =====================
   socket.on(
     "send_message",
     async ({ senderEmail, receiverEmail, message }) => {
       if (!senderEmail || !receiverEmail || !message) return;
 
-      // 🔥 SAVE MESSAGE FIRST
+      // 🔥 SAVE MESSAGE (ALWAYS)
       const msg = await Message.create({
         senderEmail,
         receiverEmail,
@@ -118,7 +167,7 @@ io.on("connection", (socket) => {
         delivered: false,
       });
 
-      // 🔥 IF RECEIVER ONLINE → SEND
+      // 🔥 IF RECEIVER ONLINE
       if (onlineUsers.has(receiverEmail)) {
         io.to(onlineUsers.get(receiverEmail)).emit("receive_message", {
           senderEmail,
@@ -133,13 +182,13 @@ io.on("connection", (socket) => {
   );
 
   // =====================
-  // USER DISCONNECT
+  // DISCONNECT
   // =====================
   socket.on("disconnect", () => {
     console.log("🔴 Socket disconnected:", socket.id);
 
-    for (let [email, socketId] of onlineUsers.entries()) {
-      if (socketId === socket.id) {
+    for (let [email, id] of onlineUsers.entries()) {
+      if (id === socket.id) {
         onlineUsers.delete(email);
         console.log("❌ User offline:", email);
         break;
