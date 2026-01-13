@@ -9,6 +9,7 @@ const { Server } = require("socket.io");
 const Message = require("./models/Message");
 const userRoutes = require("./routes/userRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+
 require("dotenv").config();
 
 // =====================
@@ -20,7 +21,6 @@ const server = http.createServer(app);
 // =====================
 // MIDDLEWARES
 // =====================
-app.use("/api/chat", chatRoutes);
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
@@ -29,6 +29,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // ROUTES
 // =====================
 app.use("/api/users", userRoutes);
+app.use("/api/chat", chatRoutes);
 
 // =====================
 // MONGODB CONNECTION
@@ -53,53 +54,6 @@ app.get("/", (req, res) => {
 });
 
 // =====================
-// CHAT APIs (FOR UI)
-// =====================
-
-// 🔹 LEFT SIDEBAR – USERS I CHATTED WITH
-app.get("/api/chat/users/:email", async (req, res) => {
-  try {
-    const email = req.params.email;
-
-    const chats = await Message.find({
-      $or: [{ senderEmail: email }, { receiverEmail: email }],
-    }).select("senderEmail receiverEmail");
-
-    const users = new Set();
-
-    chats.forEach((c) => {
-      if (c.senderEmail !== email) users.add(c.senderEmail);
-      if (c.receiverEmail !== email) users.add(c.receiverEmail);
-    });
-
-    res.json([...users]);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to load chat users" });
-  }
-});
-
-// 🔹 MESSAGE HISTORY (RIGHT CHAT)
-app.get(
-  "/api/chat/messages/:userEmail/:otherEmail",
-  async (req, res) => {
-    try {
-      const { userEmail, otherEmail } = req.params;
-
-      const messages = await Message.find({
-        $or: [
-          { senderEmail: userEmail, receiverEmail: otherEmail },
-          { senderEmail: otherEmail, receiverEmail: userEmail },
-        ],
-      }).sort({ createdAt: 1 });
-
-      res.json(messages);
-    } catch (err) {
-      res.status(500).json({ message: "Failed to load messages" });
-    }
-  }
-);
-
-// =====================
 // SOCKET.IO SETUP
 // =====================
 const io = new Server(server, {
@@ -107,11 +61,12 @@ const io = new Server(server, {
     origin: "*",
     methods: ["GET", "POST"],
   },
+  transports: ["websocket"], // 🔥 IMPORTANT FOR RENDER
 });
 
 /**
  * onlineUsers
- * email -> socketId
+ * email -> Set(socketIds)
  */
 const onlineUsers = new Map();
 
@@ -124,22 +79,29 @@ io.on("connection", (socket) => {
   socket.on("join", async ({ email }) => {
     if (!email) return;
 
-    onlineUsers.set(email, socket.id);
+    // 🔥 MULTI-TAB SAFE
+    if (!onlineUsers.has(email)) {
+      onlineUsers.set(email, new Set());
+    }
+    onlineUsers.get(email).add(socket.id);
+
+    socket.email = email;
+
     console.log("✅ User online:", email);
 
-    // 🔥 SEND OFFLINE (UNDELIVERED) MESSAGES
+    // 🔥 SEND UNDELIVERED MESSAGES
     const pendingMessages = await Message.find({
       receiverEmail: email,
       delivered: false,
     }).sort({ createdAt: 1 });
 
-    pendingMessages.forEach((msg) => {
+    for (let msg of pendingMessages) {
       socket.emit("receive_message", {
         senderEmail: msg.senderEmail,
         message: msg.message,
         time: msg.createdAt,
       });
-    });
+    }
 
     // mark delivered
     await Message.updateMany(
@@ -147,19 +109,18 @@ io.on("connection", (socket) => {
       { delivered: true }
     );
 
-    // update online list
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
   });
 
   // =====================
   // SEND MESSAGE
   // =====================
-  socket.on(
-    "send_message",
-    async ({ senderEmail, receiverEmail, message }) => {
+  socket.on("send_message", async (data) => {
+    try {
+      const { senderEmail, receiverEmail, message } = data;
       if (!senderEmail || !receiverEmail || !message) return;
 
-      // 🔥 SAVE MESSAGE (ALWAYS)
+      // 🔥 SAVE MESSAGE ALWAYS
       const msg = await Message.create({
         senderEmail,
         receiverEmail,
@@ -167,31 +128,38 @@ io.on("connection", (socket) => {
         delivered: false,
       });
 
-      // 🔥 IF RECEIVER ONLINE
+      // 🔥 SEND TO ALL ACTIVE SOCKETS OF RECEIVER
       if (onlineUsers.has(receiverEmail)) {
-        io.to(onlineUsers.get(receiverEmail)).emit("receive_message", {
-          senderEmail,
-          message,
-          time: msg.createdAt,
-        });
+        for (let sockId of onlineUsers.get(receiverEmail)) {
+          io.to(sockId).emit("receive_message", {
+            senderEmail,
+            message,
+            time: msg.createdAt,
+          });
+        }
 
         msg.delivered = true;
         await msg.save();
       }
+    } catch (err) {
+      console.error("❌ send_message error:", err.message);
     }
-  );
+  });
 
   // =====================
   // DISCONNECT
   // =====================
   socket.on("disconnect", () => {
+    const email = socket.email;
     console.log("🔴 Socket disconnected:", socket.id);
 
-    for (let [email, id] of onlineUsers.entries()) {
-      if (id === socket.id) {
+    if (email && onlineUsers.has(email)) {
+      onlineUsers.get(email).delete(socket.id);
+
+      // 🔥 REMOVE USER ONLY IF NO SOCKET LEFT
+      if (onlineUsers.get(email).size === 0) {
         onlineUsers.delete(email);
         console.log("❌ User offline:", email);
-        break;
       }
     }
 
@@ -200,7 +168,7 @@ io.on("connection", (socket) => {
 });
 
 // =====================
-// START SERVER (RENDER SAFE)
+// START SERVER
 // =====================
 const PORT = process.env.PORT || 10000;
 

@@ -2,7 +2,7 @@
 <html>
 <head>
   <title>User List</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
   <style>
@@ -13,22 +13,34 @@
       border-radius: 6px;
       background: #fafafa;
     }
+
     .live-user {
       cursor: pointer;
       padding: 8px;
       border-bottom: 1px solid #ddd;
     }
+
     .live-user:hover {
       background: #f0f0f0;
     }
+
+    .chat-btn {
+      padding: 5px 10px;
+      background: #667eea;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
   </style>
 </head>
+
 <body>
 
 <div class="table-container">
 
   <div class="nav">
-    <a href="index.html">Add / Login User</a>
+    <a href="index.html">Logout</a>
   </div>
 
   <h2>Registered Users</h2>
@@ -40,6 +52,7 @@
         <th>Mobile</th>
         <th>Email</th>
         <th>City</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody id="userTable"></tbody>
@@ -58,85 +71,94 @@
 <!-- SOCKET.IO -->
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  const socket = io("https://node-api-task-nl8e.onrender.com");
+  const socket = io("https://node-api-task-nl8e.onrender.com", {
+    transports: ["websocket"],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000
+  });
 
   // ✅ GET LOGGED USER
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
-
   if (!loggedUser || !loggedUser.email) {
     window.location.href = "index.html";
-  } else {
-    // 🔥 JOIN SOCKET
-    socket.emit("join", {
-      email: loggedUser.email
-    });
   }
-</script>
 
-<script>
-/* ======================
-   LOAD ALL USERS
-====================== */
-$(document).ready(function () {
-  $.ajax({
-    url: "https://node-api-task-nl8e.onrender.com/api/users/all",
-    type: "GET",
+  // 🔥 JOIN SOCKET
+  socket.emit("join", { email: loggedUser.email });
 
-    success: function (data) {
-      $("#userTable").html("");
+  /* ======================
+     LOAD ALL USERS
+  ====================== */
+  $(document).ready(function () {
+    $.ajax({
+      url: "https://node-api-task-nl8e.onrender.com/api/users/all",
+      type: "GET",
 
-      if (!data || data.length === 0) {
-        $("#msg").css("color", "orange").text("No users found");
-        return;
+      success: function (data) {
+        $("#userTable").html("");
+
+        if (!data || data.length === 0) {
+          $("#msg").css("color", "orange").text("No users found");
+          return;
+        }
+
+        data.forEach(user => {
+          if (user.email !== loggedUser.email) {
+            $("#userTable").append(`
+              <tr>
+                <td>${user.firstName} ${user.lastName}</td>
+                <td>${user.mobile}</td>
+                <td>${user.email}</td>
+                <td>${user.address?.city || "-"}</td>
+                <td>
+                  <button class="chat-btn"
+                    onclick="openChat('${user.email}')">
+                    Chat
+                  </button>
+                </td>
+              </tr>
+            `);
+          }
+        });
+      },
+
+      error: function () {
+        $("#msg").css("color", "red").text("Failed to load users");
       }
+    });
+  });
 
-      data.forEach(user => {
-        $("#userTable").append(`
-          <tr>
-            <td>${user.firstName} ${user.lastName}</td>
-            <td>${user.mobile}</td>
-            <td>${user.email}</td>
-            <td>${user.address?.city || "-"}</td>
-          </tr>
+  /* ======================
+     LIVE USERS FROM SOCKET
+  ====================== */
+  socket.on("live_users_list", function (emails) {
+    const container = $("#liveUsers");
+    container.html("");
+
+    if (!emails || emails.length === 0) {
+      container.html("<p>No live users</p>");
+      return;
+    }
+
+    emails.forEach(email => {
+      if (email !== loggedUser.email) {
+        container.append(`
+          <div class="live-user" onclick="openChat('${email}')">
+            🟢 ${email}
+          </div>
         `);
-      });
-    },
-
-    error: function () {
-      $("#msg").css("color", "red").text("Failed to load users");
-    }
+      }
+    });
   });
-});
 
-/* ======================
-   LIVE USERS FROM SOCKET
-====================== */
-socket.on("live_users_list", function (emails) {
-  const container = $("#liveUsers");
-  container.html("");
-
-  if (!emails || emails.length === 0) {
-    container.html("<p>No live users</p>");
-    return;
+  /* ======================
+     OPEN CHAT PAGE
+  ====================== */
+  function openChat(email) {
+    window.location.href =
+      `chat.html?email=${encodeURIComponent(email)}`;
   }
-
-  emails.forEach(email => {
-    if (email !== loggedUser.email) {
-      container.append(`
-        <div class="live-user" onclick="openChat('${email}')">
-          <strong>${email}</strong>
-        </div>
-      `);
-    }
-  });
-});
-
-/* ======================
-   OPEN CHAT PAGE
-====================== */
-function openChat(email) {
-  window.location.href = `chat.html?email=${encodeURIComponent(email)}`;
-}
 </script>
 
 </body>

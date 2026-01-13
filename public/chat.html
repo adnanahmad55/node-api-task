@@ -2,60 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chat App</title>
+  <title>Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-      font-family: "Segoe UI", sans-serif;
-    }
-
     body {
       margin: 0;
       height: 100vh;
       display: flex;
+      font-family: "Segoe UI", sans-serif;
       background: #f0f2f5;
     }
 
-    /* ===== SIDEBAR ===== */
+    /* SIDEBAR */
     .sidebar {
       width: 25%;
-      background: #ffffff;
+      background: #fff;
       border-right: 1px solid #ddd;
-      display: flex;
-      flex-direction: column;
     }
 
-    .sidebar-header {
+    .sidebar h3 {
+      margin: 0;
       padding: 15px;
       background: #667eea;
       color: white;
-      font-weight: bold;
     }
 
     .chat-user {
-      padding: 12px 15px;
-      cursor: pointer;
+      padding: 12px;
       border-bottom: 1px solid #eee;
+      cursor: pointer;
     }
 
     .chat-user:hover {
       background: #f5f5f5;
     }
 
-    .online-dot {
-      height: 8px;
-      width: 8px;
-      background: green;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 6px;
-    }
-
-    /* ===== CHAT AREA ===== */
+    /* CHAT */
     .chat {
       width: 75%;
       display: flex;
@@ -77,10 +62,9 @@
 
     .msg {
       max-width: 60%;
-      padding: 10px 14px;
+      padding: 10px;
       margin-bottom: 10px;
       border-radius: 8px;
-      font-size: 14px;
       clear: both;
     }
 
@@ -123,54 +107,52 @@
 
 <body>
 
-<!-- ===== SIDEBAR ===== -->
 <div class="sidebar">
-  <div class="sidebar-header">Chats</div>
+  <h3>Chats</h3>
   <div id="chatUsers"></div>
 </div>
 
-<!-- ===== CHAT ===== -->
 <div class="chat">
   <div class="chat-header" id="chatHeader">Select a chat</div>
   <div class="messages" id="messages"></div>
 
   <div class="chat-input">
-    <input type="text" id="messageInput" placeholder="Type a message..." />
+    <input id="messageInput" placeholder="Type a message..." />
     <button onclick="sendMessage()">➤</button>
   </div>
 </div>
 
 <script>
-  const socket = io("https://node-api-task-nl8e.onrender.com");
+  const socket = io("https://node-api-task-nl8e.onrender.com", {
+    transports: ["websocket"],
+    reconnection: true
+  });
 
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
   if (!loggedUser) location.href = "index.html";
 
-  let activeUser = null;
-
   socket.emit("join", { email: loggedUser.email });
 
-  // ======================
-  // LOAD LEFT SIDEBAR USERS
-  // ======================
+  const params = new URLSearchParams(window.location.search);
+  let activeUser = params.get("email");
+
+  if (activeUser) openChat(activeUser);
+
+  // LOAD SIDEBAR USERS
   fetch(`/api/chat/users/${loggedUser.email}`)
     .then(res => res.json())
     .then(users => {
-      const container = document.getElementById("chatUsers");
-      container.innerHTML = "";
-
+      const box = document.getElementById("chatUsers");
+      box.innerHTML = "";
       users.forEach(email => {
         const div = document.createElement("div");
         div.className = "chat-user";
         div.innerText = email;
         div.onclick = () => openChat(email);
-        container.appendChild(div);
+        box.appendChild(div);
       });
     });
 
-  // ======================
-  // OPEN CHAT + LOAD HISTORY
-  // ======================
   function openChat(email) {
     activeUser = email;
     document.getElementById("chatHeader").innerText =
@@ -180,8 +162,8 @@
 
     fetch(`/api/chat/messages/${loggedUser.email}/${email}`)
       .then(res => res.json())
-      .then(messages => {
-        messages.forEach(m => {
+      .then(msgs => {
+        msgs.forEach(m => {
           appendMessage(
             m.message,
             m.senderEmail === loggedUser.email ? "right" : "left"
@@ -190,27 +172,21 @@
       });
   }
 
-  // ======================
-  // SEND MESSAGE
-  // ======================
   function sendMessage() {
     const input = document.getElementById("messageInput");
-    const message = input.value.trim();
-    if (!message || !activeUser) return;
+    const msg = input.value.trim();
+    if (!msg || !activeUser) return;
 
     socket.emit("send_message", {
       senderEmail: loggedUser.email,
       receiverEmail: activeUser,
-      message
+      message: msg
     });
 
-    appendMessage(message, "right");
+    appendMessage(msg, "right");
     input.value = "";
   }
 
-  // ======================
-  // RECEIVE MESSAGE
-  // ======================
   socket.on("receive_message", data => {
     if (data.senderEmail === activeUser) {
       appendMessage(data.message, "left");
@@ -221,10 +197,9 @@
     const div = document.createElement("div");
     div.className = `msg ${side}`;
     div.innerText = text;
-
-    const messages = document.getElementById("messages");
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
+    const box = document.getElementById("messages");
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
   }
 </script>
 
