@@ -2,22 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chat</title>
+  <title>Chat App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- SOCKET.IO -->
   <script src="/socket.io/socket.io.js"></script>
 
+  <!-- Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
   <style>
+    * { box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
+
     body {
       margin: 0;
       height: 100vh;
       display: flex;
-      font-family: "Segoe UI", sans-serif;
       background: #f0f2f5;
     }
 
-    /* ===== SIDEBAR ===== */
+    /* ========== LEFT USERS ========== */
     .sidebar {
       width: 25%;
       background: #fff;
@@ -26,38 +29,46 @@
       flex-direction: column;
     }
 
-    .sidebar h3 {
-      margin: 0;
+    .sidebar-header {
       padding: 15px;
       background: #667eea;
       color: white;
+      font-weight: bold;
     }
 
     .chat-user {
-      padding: 12px;
+      padding: 12px 15px;
       border-bottom: 1px solid #eee;
       cursor: pointer;
-      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .chat-user:hover {
-      background: #f5f5f5;
+    .chat-user:hover { background: #f5f5f5; }
+
+    .status-dot {
+      height: 8px;
+      width: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
     }
 
-    .unread {
-      position: absolute;
-      right: 12px;
-      top: 14px;
+    .online { background: green; }
+    .offline { background: red; }
+
+    .badge {
       background: red;
       color: white;
-      font-size: 12px;
-      padding: 2px 6px;
       border-radius: 50%;
+      padding: 2px 6px;
+      font-size: 12px;
     }
 
-    /* ===== CHAT ===== */
+    /* ========== CHAT CENTER ========== */
     .chat {
-      width: 75%;
+      width: 50%;
       display: flex;
       flex-direction: column;
     }
@@ -66,14 +77,16 @@
       padding: 15px;
       background: #667eea;
       color: white;
-      font-size: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .messages {
       flex: 1;
       padding: 15px;
-      overflow-y: auto;
       background: #e5ddd5;
+      overflow-y: auto;
     }
 
     .msg {
@@ -82,26 +95,24 @@
       margin-bottom: 10px;
       border-radius: 8px;
       clear: both;
-      font-size: 14px;
     }
 
-    .left {
-      background: #fff;
-      float: left;
-      border-top-left-radius: 0;
-    }
-
-    .right {
-      background: #dcf8c6;
-      float: right;
-      border-top-right-radius: 0;
-    }
+    .left { background: #fff; float: left; }
+    .right { background: #dcf8c6; float: right; }
 
     .chat-input {
       display: flex;
+      align-items: center;
       padding: 10px;
       background: #fff;
       border-top: 1px solid #ddd;
+    }
+
+    .chat-input i {
+      font-size: 20px;
+      margin: 0 8px;
+      cursor: pointer;
+      color: #666;
     }
 
     .chat-input input {
@@ -112,41 +123,71 @@
       outline: none;
     }
 
-    .chat-input button {
-      margin-left: 10px;
-      padding: 10px 18px;
+    .send-btn {
       background: #667eea;
       color: white;
       border: none;
       border-radius: 50%;
+      padding: 10px 14px;
       cursor: pointer;
+    }
+
+    /* ========== RIGHT MEDIA ========== */
+    .media-panel {
+      width: 25%;
+      background: #fff;
+      border-left: 1px solid #ddd;
+      padding: 15px;
+    }
+
+    .media-panel h4 {
+      margin-top: 0;
     }
   </style>
 </head>
 
 <body>
 
-<!-- ===== LEFT SIDEBAR ===== -->
+<!-- LEFT USERS -->
 <div class="sidebar">
-  <h3>Chats</h3>
-  <div id="chatUsers"></div>
+  <div class="sidebar-header">
+    Chats
+    <span style="float:right;cursor:pointer" onclick="logout()">Logout</span>
+  </div>
+  <div id="usersList"></div>
 </div>
 
-<!-- ===== CHAT AREA ===== -->
+<!-- CHAT -->
 <div class="chat">
-  <div class="chat-header" id="chatHeader">Select a chat</div>
+  <div class="chat-header">
+    <span id="chatHeader">Select a chat</span>
+    <span>
+      <i class="bi bi-telephone"></i>
+      <i class="bi bi-camera-video"></i>
+      <i class="bi bi-three-dots-vertical"></i>
+    </span>
+  </div>
+
   <div class="messages" id="messages"></div>
 
   <div class="chat-input">
+    <i class="bi bi-emoji-smile"></i>
+    <i class="bi bi-paperclip"></i>
     <input id="messageInput" placeholder="Type a message..." />
-    <button onclick="sendMessage()">➤</button>
+    <i class="bi bi-mic"></i>
+    <button class="send-btn" onclick="sendMessage()">➤</button>
   </div>
+</div>
+
+<!-- RIGHT MEDIA -->
+<div class="media-panel">
+  <h4>Media</h4>
+  <p>(Images / Videos will appear here)</p>
 </div>
 
 <script>
   const socket = io("https://node-api-task-nl8e.onrender.com", {
-    transports: ["websocket"],
-    reconnection: true
+    transports: ["websocket"]
   });
 
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
@@ -157,63 +198,53 @@
   let activeUser = null;
   let unread = {};
 
-  /* ==========================
-     LOAD CHAT USERS (SIDEBAR)
-  ========================== */
-  function refreshSidebar() {
-    fetch(`/api/chat/users/${loggedUser.email}`)
-      .then(res => res.json())
-      .then(users => {
-        const box = document.getElementById("chatUsers");
-        box.innerHTML = "";
-
-        users.forEach(email => {
-          const div = document.createElement("div");
-          div.className = "chat-user";
-
-          div.innerHTML = `
+  // Load chat users
+  fetch(`/api/chat/users/${loggedUser.email}`)
+    .then(res => res.json())
+    .then(users => {
+      const list = document.getElementById("usersList");
+      users.forEach(email => {
+        unread[email] = 0;
+        const div = document.createElement("div");
+        div.className = "chat-user";
+        div.innerHTML = `
+          <span>
+            <span class="status-dot offline" id="dot-${email}"></span>
             ${email}
-            ${unread[email] ? `<span class="unread">${unread[email]}</span>` : ""}
-          `;
-
-          div.onclick = () => openChat(email);
-          box.appendChild(div);
-        });
+          </span>
+          <span class="badge" id="badge-${email}" style="display:none">0</span>
+        `;
+        div.onclick = () => openChat(email);
+        list.appendChild(div);
       });
-  }
+    });
 
-  refreshSidebar();
+  socket.on("live_users_list", users => {
+    users.forEach(email => {
+      const dot = document.getElementById(`dot-${email}`);
+      if (dot) {
+        dot.classList.remove("offline");
+        dot.classList.add("online");
+      }
+    });
+  });
 
-  /* ==========================
-     OPEN CHAT
-  ========================== */
   function openChat(email) {
     activeUser = email;
     unread[email] = 0;
-    localStorage.setItem("activeChat", email);
-
-    document.getElementById("chatHeader").innerText =
-      "Chat with " + email;
-
+    document.getElementById(`badge-${email}`).style.display = "none";
+    document.getElementById("chatHeader").innerText = "Chat with " + email;
     document.getElementById("messages").innerHTML = "";
 
     fetch(`/api/chat/messages/${loggedUser.email}/${email}`)
       .then(res => res.json())
       .then(msgs => {
         msgs.forEach(m => {
-          appendMessage(
-            m.message,
-            m.senderEmail === loggedUser.email ? "right" : "left"
-          );
+          appendMessage(m.message, m.senderEmail === loggedUser.email ? "right" : "left");
         });
       });
-
-    refreshSidebar();
   }
 
-  /* ==========================
-     SEND MESSAGE
-  ========================== */
   function sendMessage() {
     const input = document.getElementById("messageInput");
     const msg = input.value.trim();
@@ -229,37 +260,28 @@
     input.value = "";
   }
 
-  /* ==========================
-     RECEIVE MESSAGE
-  ========================== */
   socket.on("receive_message", data => {
     if (data.senderEmail === activeUser) {
       appendMessage(data.message, "left");
     } else {
-      unread[data.senderEmail] =
-        (unread[data.senderEmail] || 0) + 1;
-      refreshSidebar();
+      unread[data.senderEmail]++;
+      const badge = document.getElementById(`badge-${data.senderEmail}`);
+      badge.innerText = unread[data.senderEmail];
+      badge.style.display = "inline-block";
     }
   });
 
-  /* ==========================
-     APPEND MESSAGE
-  ========================== */
   function appendMessage(text, side) {
     const div = document.createElement("div");
     div.className = `msg ${side}`;
     div.innerText = text;
-
-    const box = document.getElementById("messages");
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
+    document.getElementById("messages").appendChild(div);
   }
 
-  /* ==========================
-     RESTORE LAST CHAT
-  ========================== */
-  const lastChat = localStorage.getItem("activeChat");
-  if (lastChat) openChat(lastChat);
+  function logout() {
+    localStorage.clear();
+    location.href = "index.html";
+  }
 </script>
 
 </body>
