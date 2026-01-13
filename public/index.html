@@ -58,12 +58,6 @@
 
 </div>
 
-<!-- SOCKET.IO (connection only, no join here) -->
-<script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io("https://node-api-task-nl8e.onrender.com");
-</script>
-
 <script>
 /* ======================
    LIVE LOGIN VALIDATION
@@ -85,8 +79,7 @@ $("#login").on("input", function () {
 ====================== */
 $("#password").on("input", function () {
   const password = $(this).val();
-  const passwordRegex =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{6,}$/;
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{6,}$/;
 
   if (passwordRegex.test(password)) {
     $("#passwordHint").text("✔ Strong password")
@@ -156,7 +149,7 @@ $("#loginForm").submit(function (e) {
       $("#loginMsg").css("color", "green")
         .text("Login successful ✅");
 
-      // 🔥 SAVE USER FOR NEXT PAGE (IMPORTANT)
+      // 🔥 SAVE USER
       localStorage.setItem(
         "loggedUser",
         JSON.stringify({
@@ -169,7 +162,7 @@ $("#loginForm").submit(function (e) {
       // 🔥 REDIRECT
       setTimeout(() => {
         window.location.href = "list.html";
-      }, 500);
+      }, 400);
     },
 
     error: function (err) {

@@ -29,7 +29,6 @@
 
   <div class="nav">
     <a href="index.html">Add / Login User</a>
-    <span></span>
   </div>
 
   <h2>Registered Users</h2>
@@ -61,15 +60,16 @@
 <script>
   const socket = io("https://node-api-task-nl8e.onrender.com");
 
-  // 🔥 GET LOGGED USER FROM localStorage
+  // ✅ GET LOGGED USER
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
 
-  // If user not logged in → redirect back
-  if (!loggedUser) {
+  if (!loggedUser || !loggedUser.email) {
     window.location.href = "index.html";
   } else {
-    // 🔥 JOIN LIVE USERS ON PAGE LOAD
-    socket.emit("join_live_users", loggedUser);
+    // 🔥 IMPORTANT: NEW EVENT NAME
+    socket.emit("join", {
+      email: loggedUser.email
+    });
   }
 </script>
 
@@ -110,23 +110,25 @@ $(document).ready(function () {
 
 /* ======================
    LIVE USERS FROM SOCKET
+   (NOW RETURNS EMAIL ARRAY)
 ====================== */
-socket.on("live_users_list", function (users) {
+socket.on("live_users_list", function (emails) {
   const container = $("#liveUsers");
   container.html("");
 
-  if (!users || users.length === 0) {
+  if (!emails || emails.length === 0) {
     container.html("<p>No live users</p>");
     return;
   }
 
-  users.forEach(u => {
-    container.append(`
-      <div class="live-user" onclick="showUser('${u.email}')">
-        <strong>${u.name}</strong><br>
-        <small>${u.email}</small>
-      </div>
-    `);
+  emails.forEach(email => {
+    if (email !== loggedUser.email) {
+      container.append(`
+        <div class="live-user" onclick="showUser('${email}')">
+          <strong>${email}</strong>
+        </div>
+      `);
+    }
   });
 });
 
