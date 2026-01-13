@@ -15,7 +15,7 @@
     }
     .live-user {
       cursor: pointer;
-      padding: 6px;
+      padding: 8px;
       border-bottom: 1px solid #ddd;
     }
     .live-user:hover {
@@ -66,7 +66,7 @@
   if (!loggedUser || !loggedUser.email) {
     window.location.href = "index.html";
   } else {
-    // 🔥 IMPORTANT: NEW EVENT NAME
+    // 🔥 JOIN SOCKET
     socket.emit("join", {
       email: loggedUser.email
     });
@@ -110,7 +110,6 @@ $(document).ready(function () {
 
 /* ======================
    LIVE USERS FROM SOCKET
-   (NOW RETURNS EMAIL ARRAY)
 ====================== */
 socket.on("live_users_list", function (emails) {
   const container = $("#liveUsers");
@@ -124,7 +123,7 @@ socket.on("live_users_list", function (emails) {
   emails.forEach(email => {
     if (email !== loggedUser.email) {
       container.append(`
-        <div class="live-user" onclick="showUser('${email}')">
+        <div class="live-user" onclick="openChat('${email}')">
           <strong>${email}</strong>
         </div>
       `);
@@ -133,29 +132,10 @@ socket.on("live_users_list", function (emails) {
 });
 
 /* ======================
-   CLICK LIVE USER → DETAILS
+   OPEN CHAT PAGE
 ====================== */
-function showUser(email) {
-  $.ajax({
-    url: "https://node-api-task-nl8e.onrender.com/api/users/all",
-    type: "GET",
-
-    success: function (users) {
-      const user = users.find(u => u.email === email);
-
-      if (!user) {
-        alert("User not found");
-        return;
-      }
-
-      alert(
-        `Name: ${user.firstName} ${user.lastName}\n` +
-        `Email: ${user.email}\n` +
-        `Mobile: ${user.mobile}\n` +
-        `City: ${user.address?.city || "-"}`
-      );
-    }
-  });
+function openChat(email) {
+  window.location.href = `chat.html?email=${encodeURIComponent(email)}`;
 }
 </script>
 

@@ -21,43 +21,8 @@
       background: #f0f2f5;
     }
 
-    /* ===== LEFT USER LIST ===== */
-    .users {
-      width: 25%;
-      background: #ffffff;
-      border-right: 1px solid #ddd;
-      overflow-y: auto;
-    }
-
-    .users h3 {
-      padding: 15px;
-      margin: 0;
-      background: #667eea;
-      color: white;
-    }
-
-    .user {
-      padding: 12px 15px;
-      cursor: pointer;
-      border-bottom: 1px solid #eee;
-    }
-
-    .user:hover {
-      background: #f5f5f5;
-    }
-
-    .online-dot {
-      height: 8px;
-      width: 8px;
-      background: green;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 6px;
-    }
-
-    /* ===== CHAT AREA ===== */
     .chat {
-      width: 75%;
+      width: 100%;
       display: flex;
       flex-direction: column;
     }
@@ -66,6 +31,7 @@
       padding: 15px;
       background: #667eea;
       color: white;
+      font-size: 16px;
     }
 
     .messages {
@@ -121,96 +87,76 @@
 
 <body>
 
-  <!-- LEFT: USERS -->
-  <div class="users">
-    <h3>Online Users</h3>
-    <div id="usersList"></div>
+<div class="chat">
+  <div class="chat-header" id="chatHeader">Chat</div>
+  <div class="messages" id="messages"></div>
+
+  <div class="chat-input">
+    <input type="text" id="messageInput" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
   </div>
+</div>
 
-  <!-- RIGHT: CHAT -->
-  <div class="chat">
-    <div class="chat-header" id="chatHeader">
-      Select a user to chat
-    </div>
+<script>
+  const socket = io("https://node-api-task-nl8e.onrender.com");
 
-    <div class="messages" id="messages"></div>
+  // ✅ GET LOGGED USER
+  const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
+  if (!loggedUser || !loggedUser.email) {
+    alert("Please login again");
+    window.location.href = "index.html";
+  }
 
-    <div class="chat-input">
-      <input type="text" id="messageInput" placeholder="Type a message..." />
-      <button onclick="sendMessage()">Send</button>
-    </div>
-  </div>
+  // ✅ GET RECEIVER FROM URL
+  const params = new URLSearchParams(window.location.search);
+  const receiverEmail = params.get("email");
 
-  <script>
-    const socket = io();
+  if (!receiverEmail) {
+    alert("No chat user selected");
+    window.location.href = "list.html";
+  }
 
-    // 🔥 TEMP USER (replace with login data)
-    const currentUser = {
-      email: localStorage.getItem("email") || prompt("Enter your email")
-    };
+  // HEADER
+  document.getElementById("chatHeader").innerText =
+    "Chat with " + receiverEmail;
 
-    localStorage.setItem("email", currentUser.email);
+  // 🔥 JOIN SOCKET
+  socket.emit("join", { email: loggedUser.email });
 
-    let selectedUser = null;
+  // SEND MESSAGE
+  function sendMessage() {
+    const input = document.getElementById("messageInput");
+    const message = input.value.trim();
 
-    // JOIN SOCKET
-    socket.emit("join", currentUser);
+    if (!message) return;
 
-    // LIVE USERS LIST
-    socket.on("live_users_list", (users) => {
-      const usersList = document.getElementById("usersList");
-      usersList.innerHTML = "";
-
-      users.forEach((email) => {
-        if (email !== currentUser.email) {
-          const div = document.createElement("div");
-          div.className = "user";
-          div.innerHTML = `<span class="online-dot"></span>${email}`;
-          div.onclick = () => selectUser(email);
-          usersList.appendChild(div);
-        }
-      });
+    socket.emit("send_message", {
+      senderEmail: loggedUser.email,
+      receiverEmail: receiverEmail,
+      message: message
     });
 
-    function selectUser(email) {
-      selectedUser = email;
-      document.getElementById("chatHeader").innerText =
-        "Chat with " + email;
-      document.getElementById("messages").innerHTML = "";
-    }
+    appendMessage(message, "right");
+    input.value = "";
+  }
 
-    // SEND MESSAGE
-    function sendMessage() {
-      const input = document.getElementById("messageInput");
-      const message = input.value.trim();
-
-      if (!message || !selectedUser) return;
-
-      socket.emit("send_message", {
-        senderEmail: currentUser.email,
-        receiverEmail: selectedUser,
-        message: message,
-      });
-
-      appendMessage(message, "right");
-      input.value = "";
-    }
-
-    // RECEIVE MESSAGE
-    socket.on("receive_message", (data) => {
+  // RECEIVE MESSAGE
+  socket.on("receive_message", (data) => {
+    if (data.senderEmail === receiverEmail) {
       appendMessage(data.message, "left");
-    });
-
-    function appendMessage(text, side) {
-      const msgDiv = document.createElement("div");
-      msgDiv.className = `msg ${side}`;
-      msgDiv.innerText = text;
-
-      const messages = document.getElementById("messages");
-      messages.appendChild(msgDiv);
-      messages.scrollTop = messages.scrollHeight;
     }
-  </script>
+  });
+
+  function appendMessage(text, side) {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `msg ${side}`;
+    msgDiv.innerText = text;
+
+    const messages = document.getElementById("messages");
+    messages.appendChild(msgDiv);
+    messages.scrollTop = messages.scrollHeight;
+  }
+</script>
 
 </body>
 </html>
