@@ -5,8 +5,8 @@ const messageSchema = new mongoose.Schema(
     senderEmail: String,
     receiverEmail: String,
     message: String,
-    delivered: Boolean,
-    read: { type: Boolean, default: false }
+    delivered: { type: Boolean, default: false },
+    read: { type: Boolean, default: false } // 🔥 NEW
   },
   { timestamps: true }
 );

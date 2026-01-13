@@ -40,14 +40,14 @@ mongoose
   .catch((err) => console.log("❌ MongoDB Error:", err));
 
 // =====================
-// HEALTH CHECK (RENDER SAFE)
+// HEALTH CHECK
 // =====================
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
 
 // =====================
-// ROOT ROUTE
+// ROOT
 // =====================
 app.get("/", (req, res) => {
   res.send("🚀 Server is running");
@@ -61,7 +61,7 @@ const io = new Server(server, {
     origin: "*",
     methods: ["GET", "POST"],
   },
-  transports: ["websocket"], // 🔥 IMPORTANT FOR RENDER
+  transports: ["websocket"], // 🔥 Render fix
 });
 
 /**
@@ -79,12 +79,11 @@ io.on("connection", (socket) => {
   socket.on("join", async ({ email }) => {
     if (!email) return;
 
-    // 🔥 MULTI-TAB SAFE
+    // multi-tab safe
     if (!onlineUsers.has(email)) {
       onlineUsers.set(email, new Set());
     }
     onlineUsers.get(email).add(socket.id);
-
     socket.email = email;
 
     console.log("✅ User online:", email);
@@ -126,9 +125,10 @@ io.on("connection", (socket) => {
         receiverEmail,
         message,
         delivered: false,
+        read: false,
       });
 
-      // 🔥 SEND TO ALL ACTIVE SOCKETS OF RECEIVER
+      // 🔥 SEND TO ALL RECEIVER SOCKETS
       if (onlineUsers.has(receiverEmail)) {
         for (let sockId of onlineUsers.get(receiverEmail)) {
           io.to(sockId).emit("receive_message", {
@@ -136,6 +136,9 @@ io.on("connection", (socket) => {
             message,
             time: msg.createdAt,
           });
+
+          // 🔥 sidebar refresh trigger
+          io.to(sockId).emit("sidebar_update");
         }
 
         msg.delivered = true;
@@ -143,6 +146,24 @@ io.on("connection", (socket) => {
       }
     } catch (err) {
       console.error("❌ send_message error:", err.message);
+    }
+  });
+
+  // =====================
+  // MARK READ (CHAT OPEN)
+  // =====================
+  socket.on("mark_read", async ({ userEmail, otherEmail }) => {
+    try {
+      await Message.updateMany(
+        {
+          senderEmail: otherEmail,
+          receiverEmail: userEmail,
+          read: false,
+        },
+        { read: true }
+      );
+    } catch (err) {
+      console.error("❌ mark_read error:", err.message);
     }
   });
 
@@ -156,7 +177,6 @@ io.on("connection", (socket) => {
     if (email && onlineUsers.has(email)) {
       onlineUsers.get(email).delete(socket.id);
 
-      // 🔥 REMOVE USER ONLY IF NO SOCKET LEFT
       if (onlineUsers.get(email).size === 0) {
         onlineUsers.delete(email);
         console.log("❌ User offline:", email);
@@ -171,7 +191,6 @@ io.on("connection", (socket) => {
 // START SERVER
 // =====================
 const PORT = process.env.PORT || 10000;
-
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

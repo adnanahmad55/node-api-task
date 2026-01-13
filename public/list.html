@@ -18,6 +18,9 @@
       cursor: pointer;
       padding: 8px;
       border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .live-user:hover {
@@ -31,6 +34,15 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
+    }
+
+    .unread {
+      background: red;
+      color: white;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 50%;
+      margin-left: 8px;
     }
   </style>
 </head>
@@ -62,7 +74,7 @@
 
   <!-- 🔥 LIVE USERS -->
   <div class="live-box">
-    <h3>Live Connected Users</h3>
+    <h3>Chats</h3>
     <div id="liveUsers"></div>
   </div>
 
@@ -72,36 +84,27 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io("https://node-api-task-nl8e.onrender.com", {
-    transports: ["websocket"],
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000
+    transports: ["websocket"]
   });
 
-  // ✅ GET LOGGED USER
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
   if (!loggedUser || !loggedUser.email) {
     window.location.href = "index.html";
   }
 
-  // 🔥 JOIN SOCKET
+  // unread store
+  const unreadCount = {};
+
   socket.emit("join", { email: loggedUser.email });
 
   /* ======================
      LOAD ALL USERS
   ====================== */
   $(document).ready(function () {
-    $.ajax({
-      url: "https://node-api-task-nl8e.onrender.com/api/users/all",
-      type: "GET",
-
-      success: function (data) {
+    $.get(
+      "https://node-api-task-nl8e.onrender.com/api/users/all",
+      function (data) {
         $("#userTable").html("");
-
-        if (!data || data.length === 0) {
-          $("#msg").css("color", "orange").text("No users found");
-          return;
-        }
 
         data.forEach(user => {
           if (user.email !== loggedUser.email) {
@@ -121,41 +124,66 @@
             `);
           }
         });
-      },
-
-      error: function () {
-        $("#msg").css("color", "red").text("Failed to load users");
       }
-    });
+    );
   });
 
   /* ======================
-     LIVE USERS FROM SOCKET
+     LOAD CHAT USERS
+  ====================== */
+  function renderChatUser(email) {
+    const badge = unreadCount[email]
+      ? `<span class="unread">${unreadCount[email]}</span>`
+      : "";
+
+    return `
+      <div class="live-user" onclick="openChat('${email}')">
+        <span>💬 ${email}</span>
+        ${badge}
+      </div>
+    `;
+  }
+
+  /* ======================
+     SOCKET EVENTS
   ====================== */
   socket.on("live_users_list", function (emails) {
-    const container = $("#liveUsers");
-    container.html("");
-
-    if (!emails || emails.length === 0) {
-      container.html("<p>No live users</p>");
-      return;
-    }
+    const box = $("#liveUsers");
+    box.html("");
 
     emails.forEach(email => {
       if (email !== loggedUser.email) {
-        container.append(`
-          <div class="live-user" onclick="openChat('${email}')">
-            🟢 ${email}
-          </div>
-        `);
+        box.append(renderChatUser(email));
       }
     });
   });
 
+  // 🔥 NEW MESSAGE COMING (WITHOUT OPEN CHAT)
+  socket.on("receive_message", (data) => {
+    const sender = data.senderEmail;
+
+    unreadCount[sender] = (unreadCount[sender] || 0) + 1;
+
+    refreshSidebar();
+  });
+
+  // 🔥 FORCE SIDEBAR REFRESH
+  socket.on("sidebar_update", refreshSidebar);
+
+  function refreshSidebar() {
+    const box = $("#liveUsers");
+    box.html("");
+
+    Object.keys(unreadCount).forEach(email => {
+      box.append(renderChatUser(email));
+    });
+  }
+
   /* ======================
-     OPEN CHAT PAGE
+     OPEN CHAT
   ====================== */
   function openChat(email) {
+    unreadCount[email] = 0; // clear unread
     window.location.href =
       `chat.html?email=${encodeURIComponent(email)}`;
   }
