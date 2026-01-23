@@ -9,17 +9,24 @@
 }
 
 :root {
-    --vh: 1vh; /* Mobile keyboard height fix ke liye */
+    --vh: 1vh;
 }
 
 body {
     background: linear-gradient(120deg, #667eea, #764ba2);
     min-height: 100vh;
-    height: calc(var(--vh, 1vh) * 100);
+    /* Laptop par normal rahega, Chat par JS height handle karega */
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto; /* Login/Register form ke liye scrolling allow karein */
+}
+
+/* Chat screen par jab aap honge, tab JS ye class body par add karega */
+body.chat-mode {
+    height: calc(var(--vh, 1vh) * 100);
+    overflow: hidden; 
 }
 
 /* =========================================
@@ -31,6 +38,7 @@ body {
     width: 420px;
     border-radius: 10px;
     box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+    margin: 20px; /* Mobile par upar niche se space ke liye */
 }
 
 .table-container {
@@ -48,39 +56,28 @@ h2 {
     color: #333;
 }
 
-hr {
-    margin: 25px 0;
-    border: none;
-    border-top: 1px solid #ddd;
-}
-
 /* =========================================
     3. FORM ELEMENTS
    ========================================= */
 input {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     margin-bottom: 12px;
     border-radius: 5px;
     border: 1px solid #ccc;
-    transition: border 0.2s ease;
-    font-size: 16px; /* Zaroori: Mobile zoom prevent karne ke liye */
-}
-
-input:focus {
-    outline: none;
-    border-color: #667eea;
+    font-size: 16px; /* Mobile zoom fix */
 }
 
 button {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     background: #667eea;
     border: none;
     color: #fff;
     font-size: 16px;
     border-radius: 5px;
     cursor: pointer;
+    font-weight: bold;
 }
 
 button:hover {
@@ -96,19 +93,7 @@ button:hover {
     border-right: 1px solid #ddd;
     display: flex;
     flex-direction: column;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
     z-index: 10;
-}
-
-.sidebar-header {
-    padding: 20px 15px;
-    background: #0084ff;
-    color: white;
-    font-size: 1.2rem;
-    font-weight: bold;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
 }
 
 .chat-area {
@@ -119,9 +104,8 @@ button:hover {
     height: 100%;
 }
 
-/* Back button for mobile navigation */
 .back-btn {
-    display: none; /* Desktop par hide */
+    display: none;
     font-size: 1.4rem;
     margin-right: 15px;
     cursor: pointer;
@@ -137,6 +121,7 @@ button:hover {
     flex-direction: column;
 }
 
+/* Bubble styling */
 .msg {
     max-width: 75%;
     padding: 10px 14px;
@@ -145,7 +130,6 @@ button:hover {
     font-size: 0.95rem;
     word-wrap: break-word;
 }
-
 .left { background: #e4e6eb; align-self: flex-start; color: #050505; }
 .right { background: #0084ff; align-self: flex-end; color: white; }
 
@@ -169,12 +153,6 @@ button:hover {
     margin-bottom: 0;
 }
 
-.chat-media {
-    max-width: 100%;
-    border-radius: 10px;
-    margin-top: 5px;
-}
-
 .gallery-panel {
     width: 280px;
     background: #fff;
@@ -184,39 +162,22 @@ button:hover {
 }
 
 /* =========================================
-    6. STATUS & BADGES
-   ========================================= */
-.status-dot {
-    height: 12px;
-    width: 12px;
-    border-radius: 50%;
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    border: 2px solid white;
-}
-.online { background-color: #31a24c; }
-.offline { background-color: #bec3c9; }
-
-.badge {
-    background: #fa3e3e;
-    color: white;
-    border-radius: 10px;
-    padding: 2px 8px;
-    font-size: 11px;
-}
-
-/* =========================================
-    7. MOBILE KEYBOARD & RESPONSIVE
+    6. MOBILE RESPONSIVE FIXES
    ========================================= */
 @media (max-width: 768px) {
     body {
-        align-items: flex-start;
+        align-items: flex-start; /* Mobile forms upar se start honge */
+    }
+
+    .container {
+        width: 100%;
+        margin: 10px;
+        padding: 20px;
     }
 
     .sidebar {
         width: 100%;
-        position: absolute;
+        position: fixed;
         left: 0;
         top: 0;
         height: 100%;
@@ -241,7 +202,7 @@ button:hover {
     }
 
     .back-btn {
-        display: block; /* Mobile par back arrow dikhega */
+        display: block;
     }
 
     .input-box {
