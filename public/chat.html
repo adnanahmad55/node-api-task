@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Messenger | Home</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
   <script src="/socket.io/socket.io.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
@@ -20,6 +20,7 @@
       display: flex;
       flex-direction: column;
       box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+      transition: 0.3s;
     }
 
     .sidebar-header {
@@ -112,6 +113,9 @@
       background: #fff;
     }
 
+    /* Back button for mobile */
+    .back-btn { display: none; font-size: 1.5rem; margin-right: 10px; cursor: pointer; color: #0084ff; }
+
     .messages {
       flex: 1;
       padding: 20px;
@@ -147,6 +151,7 @@
       display: flex;
       align-items: center;
       border-top: 1px solid #ddd;
+      background: white;
     }
 
     .input-box input[type="text"] {
@@ -156,6 +161,7 @@
       border: 1px solid #ddd;
       outline: none;
       background: #f0f2f5;
+      font-size: 16px; /* Prevents auto-zoom on iOS */
     }
 
     .send-btn, .attach-btn {
@@ -170,59 +176,31 @@
     }
 
     .attach-btn { margin-left: 0; margin-right: 10px; color: #8a8d91; }
-    .attach-btn:hover { color: #0084ff; }
 
-    /* ========== MEDIA GALLERY PANEL (RIGHT) ========== */
-    .gallery-panel {
-      width: 280px;
-      background: #fff;
-      display: flex;
-      flex-direction: column;
-    }
+    /* ========== MEDIA GALLERY PANEL ========== */
+    .gallery-panel { width: 280px; background: #fff; display: flex; flex-direction: column; }
+    .gallery-header { padding: 15px; border-bottom: 1px solid #ddd; font-weight: bold; text-align: center; background: #f8f9fa; }
+    .gallery-content { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-content: start; }
+    .gallery-item { width: 100%; aspect-ratio: 1; border-radius: 8px; object-fit: cover; cursor: pointer; background: #eee; }
 
-    .gallery-header {
-      padding: 15px;
-      border-bottom: 1px solid #ddd;
-      font-weight: bold;
-      text-align: center;
-      background: #f8f9fa;
-    }
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8a8d91; }
 
-    .gallery-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      align-content: start;
-    }
-
-    .gallery-item {
-      width: 100%;
-      aspect-ratio: 1;
-      border-radius: 8px;
-      object-fit: cover;
-      cursor: pointer;
-      background: #eee;
-    }
-
-    .gallery-item:hover { opacity: 0.8; }
-
-    .empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #8a8d91;
+    /* ========== MOBILE RESPONSIVE FIXES ========== */
+    @media (max-width: 768px) {
+      .sidebar { width: 100%; position: absolute; height: 100%; z-index: 10; }
+      .chat-area { width: 100%; }
+      .gallery-panel { display: none !important; }
+      .back-btn { display: block; }
+      
+      /* Hide sidebar when chat is active on mobile */
+      body.chat-active .sidebar { transform: translateX(-100%); }
     }
   </style>
 </head>
 
 <body>
 
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <span>Messages</span>
     <i class="bi bi-box-arrow-right" style="cursor:pointer" onclick="logout()"></i>
@@ -244,6 +222,7 @@
 <div class="chat-area">
   <div id="activeChatUI" style="display: none; flex-direction: column; height: 100%;">
     <div class="chat-header">
+      <i class="bi bi-arrow-left back-btn" onclick="closeChatMobile()"></i>
       <div class="avatar" id="headerAvatar" style="width: 35px; height: 35px; margin-right: 10px; font-size: 0.9rem;"></div>
       <span id="chatTitle" style="font-weight: bold;"></span>
     </div>
@@ -267,8 +246,7 @@
 
 <div class="gallery-panel" id="galleryPanel" style="display: none;">
     <div class="gallery-header">Shared Media</div>
-    <div class="gallery-content" id="galleryContent">
-        </div>
+    <div class="gallery-content" id="galleryContent"></div>
 </div>
 
 <script>
@@ -335,13 +313,19 @@
 
   function openChat(email, name) {
     activeUser = email;
+    document.body.classList.add('chat-active'); // For mobile view
     document.getElementById("emptyState").style.display = "none";
     document.getElementById("activeChatUI").style.display = "flex";
-    document.getElementById("galleryPanel").style.display = "flex"; // Show Gallery
+    
+    // Gallery only on Desktop
+    if(window.innerWidth > 768) {
+        document.getElementById("galleryPanel").style.display = "flex";
+    }
+
     document.getElementById("chatTitle").innerText = name;
     document.getElementById("headerAvatar").innerText = name.charAt(0).toUpperCase();
     document.getElementById("messages").innerHTML = "";
-    document.getElementById("galleryContent").innerHTML = ""; // Clear gallery
+    document.getElementById("galleryContent").innerHTML = ""; 
     
     unreadCount[email] = 0;
     renderSidebar();
@@ -359,6 +343,11 @@
         });
         scrollToBottom();
       });
+  }
+
+  function closeChatMobile() {
+    document.body.classList.remove('chat-active');
+    activeUser = null;
   }
 
   function sendMessage() {
@@ -427,7 +416,6 @@
     if(tempId) div.id = `msg-${tempId}`;
 
     if (fileUrl) {
-      // Add to Chat Bubble
       if (type === 'image') {
         div.innerHTML = `<img src="${fileUrl}" class="chat-media" onclick="window.open('${fileUrl}')">`;
         addToGallery(fileUrl, 'image');
@@ -444,20 +432,16 @@
     document.getElementById("messages").appendChild(div);
   }
 
-  // --- NEW: Function to populate gallery ---
   function addToGallery(url, type) {
     const gallery = document.getElementById("galleryContent");
     if (type === 'image') {
         const img = document.createElement("img");
-        img.src = url;
-        img.className = "gallery-item";
+        img.src = url; img.className = "gallery-item";
         img.onclick = () => window.open(url);
-        gallery.prepend(img); // Newest media at top
+        gallery.prepend(img);
     } else if (type === 'video') {
         const vid = document.createElement("video");
-        vid.src = url;
-        vid.className = "gallery-item";
-        vid.onclick = () => window.open(url);
+        vid.src = url; vid.className = "gallery-item";
         gallery.prepend(vid);
     }
   }
@@ -470,6 +454,14 @@
   function logout() {
     localStorage.clear();
     location.href = "index.html";
+  }
+
+  // Keyboard Fix for Mobile: Adjust height when keyboard appears
+  if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+          document.body.style.height = window.visualViewport.height + 'px';
+          scrollToBottom();
+      });
   }
 
   fetchSidebarData();

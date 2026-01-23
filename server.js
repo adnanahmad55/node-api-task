@@ -123,6 +123,16 @@ io.on("connection", (socket) => {
     }
   });
 
+  // 🔥 NEW: TYPING INDICATOR logic
+  socket.on("typing", ({ receiverEmail, isTyping }) => {
+    const rEmail = receiverEmail.toLowerCase();
+    if (onlineUsers.has(rEmail)) {
+      onlineUsers.get(rEmail).forEach((sockId) => {
+        io.to(sockId).emit("display_typing", { senderEmail: socket.email, isTyping });
+      });
+    }
+  });
+
   socket.on("send_message", async (data) => {
     try {
       const { senderEmail, receiverEmail, message, fileUrl, messageType } = data;
@@ -131,7 +141,6 @@ io.on("connection", (socket) => {
       const sEmail = senderEmail.toLowerCase();
       const rEmail = receiverEmail.toLowerCase();
 
-      // Database mein save
       const msg = await Message.create({
         senderEmail: sEmail,
         receiverEmail: rEmail,
@@ -142,14 +151,13 @@ io.on("connection", (socket) => {
         read: false,
       });
 
-      // Receiver ko bhej rhe hain media details ke saath
       if (onlineUsers.has(rEmail)) {
         onlineUsers.get(rEmail).forEach((sockId) => {
           io.to(sockId).emit("receive_message", {
             senderEmail: sEmail,
             message: msg.message,
-            fileUrl: msg.fileUrl,       // 🔥 Ab media URL bhi jayega
-            messageType: msg.messageType, // 🔥 Ab type bhi jayega
+            fileUrl: msg.fileUrl,
+            messageType: msg.messageType,
             time: msg.createdAt,
           });
         });
@@ -158,7 +166,6 @@ io.on("connection", (socket) => {
         await msg.save();
       }
       
-      // Sidebar refresh trigger
       if (onlineUsers.has(rEmail)) {
           onlineUsers.get(rEmail).forEach(id => io.to(id).emit("sidebar_update"));
       }
@@ -187,8 +194,9 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     const email = socket.email;
     if (email && onlineUsers.has(email)) {
-      onlineUsers.get(email).delete(socket.id);
-      if (onlineUsers.get(email).size === 0) {
+      const socketSet = onlineUsers.get(email);
+      socketSet.delete(socket.id);
+      if (socketSet.size === 0) {
         onlineUsers.delete(email);
       }
     }

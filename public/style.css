@@ -1,221 +1,274 @@
+/* =========================================
+   1. GLOBAL & RESET STYLES
+   ========================================= */
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body {
-  background: linear-gradient(120deg, #667eea, #764ba2);
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+    background: linear-gradient(120deg, #667eea, #764ba2);
+    min-height: 100vh;
+    height: 100%; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Desktop par scroll prevent karne ke liye */
 }
 
-/* =========================
-   CONTAINERS
-========================= */
-
+/* =========================================
+   2. CONTAINERS (Login/Register/Table)
+   ========================================= */
 .container {
-  background: #fff;
-  padding: 25px 30px;
-  width: 420px;
-  border-radius: 10px;
-  box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+    background: #fff;
+    padding: 25px 30px;
+    width: 420px;
+    border-radius: 10px;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.2);
 }
 
 .table-container {
-  width: 90%;
-  background: #fff;
-  padding: 20px;
-  border-radius: 10px;
+    width: 95%;
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
-/* =========================
-   HEADINGS
-========================= */
-
 h2 {
-  text-align: center;
-  margin-bottom: 20px;
-  color: #333;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
 }
 
 hr {
-  margin: 25px 0;
-  border: none;
-  border-top: 1px solid #ddd;
+    margin: 25px 0;
+    border: none;
+    border-top: 1px solid #ddd;
 }
 
-/* =========================
-   FORM ELEMENTS
-========================= */
-
+/* =========================================
+   3. FORM ELEMENTS
+   ========================================= */
 input {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 12px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-  transition: border 0.2s ease;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 12px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    transition: border 0.2s ease;
+    font-size: 16px; /* Zaroori: Mobile zoom prevent karne ke liye */
 }
 
 input:focus {
-  outline: none;
-  border-color: #667eea;
+    outline: none;
+    border-color: #667eea;
 }
 
 button {
-  width: 100%;
-  padding: 10px;
-  background: #667eea;
-  border: none;
-  color: #fff;
-  font-size: 16px;
-  border-radius: 5px;
-  cursor: pointer;
+    width: 100%;
+    padding: 10px;
+    background: #667eea;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
 }
 
 button:hover {
-  background: #5a67d8;
+    background: #5a67d8;
 }
 
-/* =========================
-   MESSAGES
-========================= */
-
-#msg,
-#loginMsg {
-  text-align: center;
-  margin-top: 10px;
-  font-weight: bold;
-}
-
-/* =========================
-   NAV BAR
-========================= */
-
+/* Nav Links */
 .nav {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
 }
 
 .nav a {
-  text-decoration: none;
-  padding: 8px 14px;
-  background: #667eea;
-  color: #fff;
-  border-radius: 5px;
-  font-size: 14px;
+    text-decoration: none;
+    padding: 8px 14px;
+    background: #667eea;
+    color: #fff;
+    border-radius: 5px;
+    font-size: 14px;
 }
 
-.nav a:hover {
-  background: #5a67d8;
+/* =========================================
+   4. MESSENGER LAYOUT (SIDEBAR + CHAT + GALLERY)
+   ========================================= */
+.sidebar {
+    width: 320px;
+    background: #fff;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
 }
 
-/* =========================
-   TABLE
-========================= */
-
-table {
-  width: 100%;
-  border-collapse: collapse;
+.sidebar-header {
+    padding: 20px 15px;
+    background: #0084ff;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-th, td {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
-  text-align: center;
+.chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-right: 1px solid #ddd;
 }
 
-th {
-  background: #667eea;
-  color: white;
+.gallery-panel {
+    width: 280px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
 }
 
-tr:hover {
-  background: #f1f1f1;
+/* Messages Area */
+.messages {
+    flex: 1;
+    padding: 20px;
+    background: #f0f2f5;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
-/* =========================
-   HINTS (VALIDATION)
-========================= */
-
-.hint {
-  display: block;
-  font-size: 12px;
-  margin-bottom: 10px;
+.msg {
+    max-width: 65%;
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    border-radius: 18px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-wrap: break-word;
 }
 
-.hint.error {
-  color: red;
+.left { background: #e4e6eb; align-self: flex-start; color: #050505; }
+.right { background: #0084ff; align-self: flex-end; color: white; }
+
+/* Media Styling */
+.chat-media {
+    max-width: 100%;
+    border-radius: 10px;
+    margin-top: 5px;
+    display: block;
+    cursor: pointer;
 }
 
-.hint.success {
-  color: green;
+.gallery-item {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    object-fit: cover;
+    cursor: pointer;
+    background: #eee;
 }
 
-/* =========================
-   LIVE USERS (SOCKET)
-========================= */
-
-.live-box {
-  margin-top: 30px;
-  padding: 15px;
-  border-radius: 8px;
-  background: #f9f9ff;
-  border: 1px solid #e0e0ff;
+/* =========================================
+   5. INPUT BOX & ATTACHMENTS
+   ========================================= */
+.input-box {
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #ddd;
+    background: #fff;
 }
 
-.live-box h3 {
-  margin-bottom: 10px;
-  color: #444;
-  font-size: 18px;
-  text-align: center;
+.input-box input[type="text"] {
+    flex: 1;
+    padding: 10px 15px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    outline: none;
+    background: #f0f2f5;
+    margin-bottom: 0; /* Override global margin */
 }
 
-#liveUsers {
-  max-height: 250px;
-  overflow-y: auto;
+.send-btn, .attach-btn {
+    background: none;
+    border: none;
+    color: #0084ff;
+    font-size: 1.4rem;
+    cursor: pointer;
+    margin-left: 10px;
 }
 
-.live-user {
-  padding: 10px;
-  margin-bottom: 8px;
-  border-radius: 5px;
-  background: #fff;
-  border: 1px solid #ddd;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
+.attach-btn { color: #8a8d91; margin-left: 0; margin-right: 10px; }
 
-.live-user strong {
-  color: #667eea;
+/* =========================================
+   6. STATUS & BADGES
+   ========================================= */
+.status-dot {
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    border: 2px solid white;
 }
+.online { background-color: #31a24c; }
+.offline { background-color: #bec3c9; }
 
-.live-user small {
-  color: #666;
-  font-size: 12px;
-}
-
-.live-user:hover {
-  background: #eef1ff;
-  transform: scale(1.02);
-}
-
-/* Empty live users text */
-#liveUsers p {
-  text-align: center;
-  color: #999;
-  font-style: italic;
-}
 .badge {
-  background: #ff3b30;
-  color: white;
-  border-radius: 50%;
-  padding: 4px 8px;
-  font-size: 12px;
-  float: right;
+    background: #fa3e3e;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+/* =========================================
+   7. MOBILE KEYBOARD & RESPONSIVE FIXES
+   ========================================= */
+@media (max-width: 768px) {
+    body {
+        align-items: flex-start;
+        overflow: hidden;
+        position: fixed; /* Screen shift prevent karne ke liye */
+        width: 100%;
+        height: 100%;
+    }
+
+    .sidebar, .gallery-panel {
+        display: none !important; /* Mobile par sirf chat area dikhega */
+    }
+
+    .chat-area {
+        width: 100% !important;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 100;
+    }
+
+    .messages {
+        flex: 1;
+        padding-bottom: 80px; /* Space for input box */
+    }
+
+    .input-box {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        z-index: 110;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
 }
