@@ -20,7 +20,7 @@ const app = express();
 const server = http.createServer(app);
 
 // =====================
-// CLOUDINARY CONFIG (Uses Render Env Variables)
+// CLOUDINARY CONFIG
 // =====================
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_NAME,
@@ -32,7 +32,7 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'messenger_media',
-    resource_type: 'auto', // Detects image or video automatically
+    resource_type: 'auto', 
   },
 });
 const upload = multer({ storage: storage });
@@ -48,8 +48,6 @@ app.use(express.static(path.join(__dirname, "public")));
 app.post("/api/chat/upload", upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    
-    // Check if it's a video or image based on mimetype
     const type = req.file.mimetype.startsWith('video') ? 'video' : 'image';
     res.json({ url: req.file.path, type: type });
   } catch (err) {
@@ -133,7 +131,7 @@ io.on("connection", (socket) => {
       const sEmail = senderEmail.toLowerCase();
       const rEmail = receiverEmail.toLowerCase();
 
-      // Database mein save karein (text ho ya media)
+      // Database mein save
       const msg = await Message.create({
         senderEmail: sEmail,
         receiverEmail: rEmail,
@@ -144,13 +142,14 @@ io.on("connection", (socket) => {
         read: false,
       });
 
+      // Receiver ko bhej rhe hain media details ke saath
       if (onlineUsers.has(rEmail)) {
         onlineUsers.get(rEmail).forEach((sockId) => {
           io.to(sockId).emit("receive_message", {
             senderEmail: sEmail,
             message: msg.message,
-            fileUrl: msg.fileUrl,
-            messageType: msg.messageType,
+            fileUrl: msg.fileUrl,       // 🔥 Ab media URL bhi jayega
+            messageType: msg.messageType, // 🔥 Ab type bhi jayega
             time: msg.createdAt,
           });
         });
@@ -159,6 +158,7 @@ io.on("connection", (socket) => {
         await msg.save();
       }
       
+      // Sidebar refresh trigger
       if (onlineUsers.has(rEmail)) {
           onlineUsers.get(rEmail).forEach(id => io.to(id).emit("sidebar_update"));
       }
