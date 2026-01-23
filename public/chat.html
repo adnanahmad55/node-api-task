@@ -2,149 +2,178 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Chat App</title>
+  <title>Messenger | Home</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <script src="/socket.io/socket.io.js"></script>
-
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
-    * { box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
+    body { margin: 0; height: 100vh; display: flex; background: #f0f2f5; color: #1c1e21; }
 
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      background: #f0f2f5;
-    }
-
-    /* ========== LEFT USERS ========== */
+    /* ========== SIDEBAR (MESSAGE BAR) ========== */
     .sidebar {
-      width: 25%;
+      width: 320px;
       background: #fff;
       border-right: 1px solid #ddd;
       display: flex;
       flex-direction: column;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.05);
     }
 
     .sidebar-header {
-      padding: 15px;
-      background: #667eea;
+      padding: 20px 15px;
+      background: #0084ff;
       color: white;
+      font-size: 1.2rem;
       font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-search {
+      padding: 10px;
+      background: #f0f2f5;
+    }
+
+    .user-search input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 20px;
+      border: 1px solid #ddd;
+      outline: none;
+    }
+
+    .users-list {
+      flex: 1;
+      overflow-y: auto;
     }
 
     .chat-user {
       padding: 12px 15px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #f0f2f5;
       cursor: pointer;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      transition: 0.2s;
     }
 
-    .chat-user:hover { background: #f5f5f5; }
+    .chat-user:hover { background: #f5f6f7; }
+    
+    .avatar-container {
+      position: relative;
+      margin-right: 12px;
+    }
 
+    .avatar {
+      width: 45px;
+      height: 45px;
+      background: #e4e6eb;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #050505;
+    }
+
+    /* Green and Red Dots */
     .status-dot {
-      height: 8px;
-      width: 8px;
+      height: 12px;
+      width: 12px;
       border-radius: 50%;
-      display: inline-block;
-      margin-right: 6px;
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      border: 2px solid white;
     }
 
-    .online { background: green; }
-    .offline { background: red; }
+    .online { background-color: #31a24c; } /* Green */
+    .offline { background-color: #bec3c9; } /* Grayish-Red */
 
+    .user-info { flex: 1; }
+    .user-info .name { font-weight: 600; font-size: 0.95rem; }
+    
     .badge {
-      background: red;
+      background: #fa3e3e;
       color: white;
-      border-radius: 50%;
-      padding: 2px 6px;
-      font-size: 12px;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: bold;
     }
 
-    /* ========== CHAT CENTER ========== */
-    .chat {
-      width: 50%;
+    /* ========== CHAT AREA ========== */
+    .chat-area {
+      flex: 1;
       display: flex;
       flex-direction: column;
+      background: #fff;
     }
 
     .chat-header {
       padding: 15px;
-      background: #667eea;
-      color: white;
+      border-bottom: 1px solid #ddd;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      background: #fff;
     }
 
     .messages {
       flex: 1;
-      padding: 15px;
-      background: #e5ddd5;
+      padding: 20px;
+      background: #f0f2f5;
       overflow-y: auto;
       display: flex;
-      flex-direction: column; /* Better message alignment */
+      flex-direction: column;
     }
 
     .msg {
-      max-width: 60%;
-      padding: 10px 14px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      word-wrap: break-word;
-      position: relative;
+      max-width: 65%;
+      padding: 10px 15px;
+      margin-bottom: 8px;
+      border-radius: 18px;
+      font-size: 0.95rem;
+      line-height: 1.4;
     }
 
-    .left { background: #fff; align-self: flex-start; }
-    .right { background: #dcf8c6; align-self: flex-end; }
+    .left { background: #e4e6eb; align-self: flex-start; color: #050505; }
+    .right { background: #0084ff; align-self: flex-end; color: white; }
 
-    .chat-input {
+    .input-box {
+      padding: 15px;
       display: flex;
       align-items: center;
-      padding: 10px;
-      background: #fff;
       border-top: 1px solid #ddd;
     }
 
-    .chat-input i {
-      font-size: 20px;
-      margin: 0 8px;
-      cursor: pointer;
-      color: #666;
-    }
-
-    .chat-input input {
+    .input-box input {
       flex: 1;
-      padding: 12px;
+      padding: 10px 15px;
       border-radius: 20px;
-      border: 1px solid #ccc;
+      border: 1px solid #ddd;
       outline: none;
+      background: #f0f2f5;
     }
 
     .send-btn {
-      background: #667eea;
-      color: white;
+      margin-left: 10px;
+      background: none;
       border: none;
-      border-radius: 50%;
-      padding: 10px 14px;
+      color: #0084ff;
+      font-size: 1.5rem;
       cursor: pointer;
-      margin-left: 5px;
     }
 
-    /* ========== RIGHT MEDIA ========== */
-    .media-panel {
-      width: 25%;
-      background: #fff;
-      border-left: 1px solid #ddd;
-      padding: 15px;
-    }
-
-    .media-panel h4 {
-      margin-top: 0;
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #8a8d91;
     }
   </style>
 </head>
@@ -153,72 +182,75 @@
 
 <div class="sidebar">
   <div class="sidebar-header">
-    Chats
-    <span style="float:right;cursor:pointer" onclick="logout()">Logout</span>
+    <span>Messages</span>
+    <i class="bi bi-box-arrow-right" style="cursor:pointer" onclick="logout()"></i>
   </div>
-  <div id="usersList"></div>
+  
+  <div class="user-search">
+    <input type="text" placeholder="Search Messenger">
+  </div>
+
+  <div class="users-list" id="usersList">
+    </div>
 </div>
 
-<div class="chat">
-  <div class="chat-header">
-    <span id="chatHeader">Select a chat</span>
-    <span>
-      <i class="bi bi-telephone"></i>
-      <i class="bi bi-camera-video"></i>
-      <i class="bi bi-three-dots-vertical"></i>
-    </span>
+<div class="chat-area">
+  <div id="activeChatUI" style="display: none; flex-direction: column; height: 100%;">
+    <div class="chat-header">
+      <div class="avatar" id="headerAvatar" style="width: 35px; height: 35px; margin-right: 10px;"></div>
+      <span id="chatTitle" style="font-weight: bold;"></span>
+    </div>
+    <div class="messages" id="messages"></div>
+    <div class="input-box">
+      <input id="messageInput" placeholder="Aa" onkeypress="if(event.key==='Enter') sendMessage()" />
+      <button class="send-btn" onclick="sendMessage()"><i class="bi bi-send-fill"></i></button>
+    </div>
   </div>
 
-  <div class="messages" id="messages"></div>
-
-  <div class="chat-input">
-    <i class="bi bi-emoji-smile"></i>
-    <i class="bi bi-paperclip"></i>
-    <input id="messageInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)" />
-    <i class="bi bi-mic"></i>
-    <button class="send-btn" onclick="sendMessage()">➤</button>
+  <div id="emptyState" class="empty-state">
+    <i class="bi bi-chat-dots" style="font-size: 4rem; margin-bottom: 10px;"></i>
+    <p>Select a contact to start chatting</p>
   </div>
-</div>
-
-<div class="media-panel">
-  <h4>Media</h4>
-  <p>(Images / Videos will appear here)</p>
 </div>
 
 <script>
-  const socket = io("https://node-api-task-nl8e.onrender.com", {
-    transports: ["websocket"]
-  });
-
+  const socket = io("https://node-api-task-nl8e.onrender.com", { transports: ["websocket"] });
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
-  if (!loggedUser) location.href = "index.html";
+  
+  if (!loggedUser) {
+    location.href = "index.html";
+  }
 
   socket.emit("join", { email: loggedUser.email });
 
   let activeUser = null;
-  let unread = {};
+  let unreadCount = {};
 
-  // Load chat users
-  function loadUsers() {
+  // 1. Fetch Users and display in Sidebar
+  function loadSidebar() {
     fetch(`/api/chat/users/${loggedUser.email}`)
       .then(res => res.json())
       .then(users => {
         const list = document.getElementById("usersList");
-        list.innerHTML = ""; // Clear list before loading
+        list.innerHTML = "";
+        
         users.forEach(user => {
-          // Check if backend returns objects or just strings
-          const email = user.email || user; 
-          const name = user.firstName || email; 
+          const email = user.email;
+          const name = user.firstName || email;
+          const initial = name.charAt(0).toUpperCase();
 
-          unread[email] = unread[email] || 0;
           const div = document.createElement("div");
           div.className = "chat-user";
+          div.id = `user-row-${email}`;
           div.innerHTML = `
-            <span>
-              <span class="status-dot offline" id="dot-${email}"></span>
-              ${name}
-            </span>
-            <span class="badge" id="badge-${email}" style="display:${unread[email] > 0 ? 'inline-block' : 'none'}">${unread[email]}</span>
+            <div class="avatar-container">
+              <div class="avatar">${initial}</div>
+              <div class="status-dot offline" id="dot-${email}"></div>
+            </div>
+            <div class="user-info">
+              <div class="name">${name}</div>
+            </div>
+            <div id="badge-${email}" class="badge" style="display:none">0</div>
           `;
           div.onclick = () => openChat(email, name);
           list.appendChild(div);
@@ -226,54 +258,46 @@
       });
   }
 
-  loadUsers();
-
-  socket.on("live_users_list", users => {
-    // Reset all dots to offline first
+  // 2. Real-time Status Update (Green/Red Dots)
+  socket.on("live_users_list", onlineEmails => {
+    // Reset sabko offline
     document.querySelectorAll('.status-dot').forEach(dot => {
-        dot.classList.remove("online");
-        dot.classList.add("offline");
+      dot.classList.remove("online");
+      dot.classList.add("offline");
     });
-    // Set active ones to online
-    users.forEach(email => {
+    
+    // Jo online hain unhe green karo
+    onlineEmails.forEach(email => {
       const dot = document.getElementById(`dot-${email}`);
       if (dot) {
-        dot.classList.remove("offline");
         dot.classList.add("online");
+        dot.classList.remove("offline");
       }
     });
   });
 
-  // Listen for sidebar updates (new users)
-  socket.on("sidebar_update", () => {
-    loadUsers();
-  });
-
   function openChat(email, name) {
     activeUser = email;
-    unread[email] = 0;
+    document.getElementById("emptyState").style.display = "none";
+    document.getElementById("activeChatUI").style.display = "flex";
+    document.getElementById("chatTitle").innerText = name;
+    document.getElementById("headerAvatar").innerText = name.charAt(0).toUpperCase();
+    document.getElementById("messages").innerHTML = "";
+    
+    // Unread count reset
+    unreadCount[email] = 0;
     const badge = document.getElementById(`badge-${email}`);
     if(badge) badge.style.display = "none";
-    
-    document.getElementById("chatHeader").innerText = "Chat with " + name;
-    document.getElementById("messages").innerHTML = "";
 
     socket.emit("mark_read", { userEmail: loggedUser.email, otherEmail: email });
 
+    // Fetch History
     fetch(`/api/chat/messages/${loggedUser.email}/${email}`)
       .then(res => res.json())
       .then(msgs => {
-        msgs.forEach(m => {
-          appendMessage(m.message, m.senderEmail === loggedUser.email ? "right" : "left");
-        });
+        msgs.forEach(m => appendMessage(m.message, m.senderEmail === loggedUser.email ? "right" : "left"));
         scrollToBottom();
       });
-  }
-
-  function handleKeyPress(e) {
-    if (e.key === 'Enter') {
-      sendMessage();
-    }
   }
 
   function sendMessage() {
@@ -281,12 +305,7 @@
     const msg = input.value.trim();
     if (!msg || !activeUser) return;
 
-    socket.emit("send_message", {
-      senderEmail: loggedUser.email,
-      receiverEmail: activeUser,
-      message: msg
-    });
-
+    socket.emit("send_message", { senderEmail: loggedUser.email, receiverEmail: activeUser, message: msg });
     appendMessage(msg, "right");
     input.value = "";
     scrollToBottom();
@@ -297,10 +316,11 @@
       appendMessage(data.message, "left");
       scrollToBottom();
     } else {
-      unread[data.senderEmail] = (unread[data.senderEmail] || 0) + 1;
+      // Sidebar notifications
+      unreadCount[data.senderEmail] = (unreadCount[data.senderEmail] || 0) + 1;
       const badge = document.getElementById(`badge-${data.senderEmail}`);
-      if (badge) {
-        badge.innerText = unread[data.senderEmail];
+      if(badge) {
+        badge.innerText = unreadCount[data.senderEmail];
         badge.style.display = "inline-block";
       }
     }
@@ -314,14 +334,21 @@
   }
 
   function scrollToBottom() {
-    const msgDiv = document.getElementById("messages");
-    msgDiv.scrollTop = msgDiv.scrollHeight;
+    const m = document.getElementById("messages");
+    m.scrollTop = m.scrollHeight;
   }
 
   function logout() {
     localStorage.clear();
     location.href = "index.html";
   }
+
+  // Initial Load
+  loadSidebar();
+  
+  // Refresh users list if a new user joins
+  socket.on("sidebar_update", () => loadSidebar());
+
 </script>
 
 </body>
