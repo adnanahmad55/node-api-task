@@ -7,6 +7,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const Message = require("./models/Message");
+const User = require("./models/User"); // User model check kar lena path sahi ho
 const userRoutes = require("./routes/userRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 
@@ -65,7 +66,7 @@ const io = new Server(server, {
 });
 
 /**
- * onlineUsers
+ * onlineUsers Map
  * email -> Set(socketIds)
  */
 const onlineUsers = new Map();
@@ -79,34 +80,44 @@ io.on("connection", (socket) => {
   socket.on("join", async ({ email }) => {
     if (!email) return;
 
-    // multi-tab safe
-    if (!onlineUsers.has(email)) {
-      onlineUsers.set(email, new Set());
+    // Normalize email to avoid case-sensitivity issues
+    const userEmail = email.toLowerCase();
+
+    // Multi-tab safe logic
+    if (!onlineUsers.has(userEmail)) {
+      onlineUsers.set(userEmail, new Set());
     }
-    onlineUsers.get(email).add(socket.id);
-    socket.email = email;
+    onlineUsers.get(userEmail).add(socket.id);
+    socket.email = userEmail;
 
-    console.log("✅ User online:", email);
+    console.log("✅ User online:", userEmail);
 
+    // Jab koi naya banda online aaye, sabko batao list update karne ke liye
+    io.emit("sidebar_update"); 
+    
     // 🔥 SEND UNDELIVERED MESSAGES
-    const pendingMessages = await Message.find({
-      receiverEmail: email,
-      delivered: false,
-    }).sort({ createdAt: 1 });
+    try {
+      const pendingMessages = await Message.find({
+        receiverEmail: userEmail,
+        delivered: false,
+      }).sort({ createdAt: 1 });
 
-    for (let msg of pendingMessages) {
-      socket.emit("receive_message", {
-        senderEmail: msg.senderEmail,
-        message: msg.message,
-        time: msg.createdAt,
-      });
+      for (let msg of pendingMessages) {
+        socket.emit("receive_message", {
+          senderEmail: msg.senderEmail,
+          message: msg.message,
+          time: msg.createdAt,
+        });
+      }
+
+      // Mark as delivered
+      await Message.updateMany(
+        { receiverEmail: userEmail, delivered: false },
+        { delivered: true }
+      );
+    } catch (err) {
+      console.error("❌ Pending messages error:", err);
     }
-
-    // mark delivered
-    await Message.updateMany(
-      { receiverEmail: email, delivered: false },
-      { delivered: true }
-    );
 
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
   });
@@ -119,28 +130,29 @@ io.on("connection", (socket) => {
       const { senderEmail, receiverEmail, message } = data;
       if (!senderEmail || !receiverEmail || !message) return;
 
+      const sEmail = senderEmail.toLowerCase();
+      const rEmail = receiverEmail.toLowerCase();
+
       // 🔥 SAVE MESSAGE ALWAYS
       const msg = await Message.create({
-        senderEmail,
-        receiverEmail,
+        senderEmail: sEmail,
+        receiverEmail: rEmail,
         message,
         delivered: false,
         read: false,
       });
 
-      // 🔥 SEND TO ALL RECEIVER SOCKETS
-      if (onlineUsers.has(receiverEmail)) {
-        for (let sockId of onlineUsers.get(receiverEmail)) {
+      // 🔥 SEND TO ALL RECEIVER SOCKETS (If Online)
+      if (onlineUsers.has(rEmail)) {
+        onlineUsers.get(rEmail).forEach((sockId) => {
           io.to(sockId).emit("receive_message", {
-            senderEmail,
+            senderEmail: sEmail,
             message,
             time: msg.createdAt,
           });
+        });
 
-          // 🔥 sidebar refresh trigger
-          io.to(sockId).emit("sidebar_update");
-        }
-
+        // Agar kam se kam ek socket par deliver ho gaya
         msg.delivered = true;
         await msg.save();
       }
@@ -150,14 +162,15 @@ io.on("connection", (socket) => {
   });
 
   // =====================
-  // MARK READ (CHAT OPEN)
+  // MARK READ
   // =====================
   socket.on("mark_read", async ({ userEmail, otherEmail }) => {
     try {
+      if(!userEmail || !otherEmail) return;
       await Message.updateMany(
         {
-          senderEmail: otherEmail,
-          receiverEmail: userEmail,
+          senderEmail: otherEmail.toLowerCase(),
+          receiverEmail: userEmail.toLowerCase(),
           read: false,
         },
         { read: true }

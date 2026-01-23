@@ -7,7 +7,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
 
-  <!-- Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
@@ -87,6 +86,8 @@
       padding: 15px;
       background: #e5ddd5;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column; /* Better message alignment */
     }
 
     .msg {
@@ -94,11 +95,12 @@
       padding: 10px 14px;
       margin-bottom: 10px;
       border-radius: 8px;
-      clear: both;
+      word-wrap: break-word;
+      position: relative;
     }
 
-    .left { background: #fff; float: left; }
-    .right { background: #dcf8c6; float: right; }
+    .left { background: #fff; align-self: flex-start; }
+    .right { background: #dcf8c6; align-self: flex-end; }
 
     .chat-input {
       display: flex;
@@ -130,6 +132,7 @@
       border-radius: 50%;
       padding: 10px 14px;
       cursor: pointer;
+      margin-left: 5px;
     }
 
     /* ========== RIGHT MEDIA ========== */
@@ -148,7 +151,6 @@
 
 <body>
 
-<!-- LEFT USERS -->
 <div class="sidebar">
   <div class="sidebar-header">
     Chats
@@ -157,7 +159,6 @@
   <div id="usersList"></div>
 </div>
 
-<!-- CHAT -->
 <div class="chat">
   <div class="chat-header">
     <span id="chatHeader">Select a chat</span>
@@ -173,13 +174,12 @@
   <div class="chat-input">
     <i class="bi bi-emoji-smile"></i>
     <i class="bi bi-paperclip"></i>
-    <input id="messageInput" placeholder="Type a message..." />
+    <input id="messageInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)" />
     <i class="bi bi-mic"></i>
     <button class="send-btn" onclick="sendMessage()">➤</button>
   </div>
 </div>
 
-<!-- RIGHT MEDIA -->
 <div class="media-panel">
   <h4>Media</h4>
   <p>(Images / Videos will appear here)</p>
@@ -199,27 +199,42 @@
   let unread = {};
 
   // Load chat users
-  fetch(`/api/chat/users/${loggedUser.email}`)
-    .then(res => res.json())
-    .then(users => {
-      const list = document.getElementById("usersList");
-      users.forEach(email => {
-        unread[email] = 0;
-        const div = document.createElement("div");
-        div.className = "chat-user";
-        div.innerHTML = `
-          <span>
-            <span class="status-dot offline" id="dot-${email}"></span>
-            ${email}
-          </span>
-          <span class="badge" id="badge-${email}" style="display:none">0</span>
-        `;
-        div.onclick = () => openChat(email);
-        list.appendChild(div);
+  function loadUsers() {
+    fetch(`/api/chat/users/${loggedUser.email}`)
+      .then(res => res.json())
+      .then(users => {
+        const list = document.getElementById("usersList");
+        list.innerHTML = ""; // Clear list before loading
+        users.forEach(user => {
+          // Check if backend returns objects or just strings
+          const email = user.email || user; 
+          const name = user.firstName || email; 
+
+          unread[email] = unread[email] || 0;
+          const div = document.createElement("div");
+          div.className = "chat-user";
+          div.innerHTML = `
+            <span>
+              <span class="status-dot offline" id="dot-${email}"></span>
+              ${name}
+            </span>
+            <span class="badge" id="badge-${email}" style="display:${unread[email] > 0 ? 'inline-block' : 'none'}">${unread[email]}</span>
+          `;
+          div.onclick = () => openChat(email, name);
+          list.appendChild(div);
+        });
       });
-    });
+  }
+
+  loadUsers();
 
   socket.on("live_users_list", users => {
+    // Reset all dots to offline first
+    document.querySelectorAll('.status-dot').forEach(dot => {
+        dot.classList.remove("online");
+        dot.classList.add("offline");
+    });
+    // Set active ones to online
     users.forEach(email => {
       const dot = document.getElementById(`dot-${email}`);
       if (dot) {
@@ -229,12 +244,21 @@
     });
   });
 
-  function openChat(email) {
+  // Listen for sidebar updates (new users)
+  socket.on("sidebar_update", () => {
+    loadUsers();
+  });
+
+  function openChat(email, name) {
     activeUser = email;
     unread[email] = 0;
-    document.getElementById(`badge-${email}`).style.display = "none";
-    document.getElementById("chatHeader").innerText = "Chat with " + email;
+    const badge = document.getElementById(`badge-${email}`);
+    if(badge) badge.style.display = "none";
+    
+    document.getElementById("chatHeader").innerText = "Chat with " + name;
     document.getElementById("messages").innerHTML = "";
+
+    socket.emit("mark_read", { userEmail: loggedUser.email, otherEmail: email });
 
     fetch(`/api/chat/messages/${loggedUser.email}/${email}`)
       .then(res => res.json())
@@ -242,7 +266,14 @@
         msgs.forEach(m => {
           appendMessage(m.message, m.senderEmail === loggedUser.email ? "right" : "left");
         });
+        scrollToBottom();
       });
+  }
+
+  function handleKeyPress(e) {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
   }
 
   function sendMessage() {
@@ -258,16 +289,20 @@
 
     appendMessage(msg, "right");
     input.value = "";
+    scrollToBottom();
   }
 
   socket.on("receive_message", data => {
     if (data.senderEmail === activeUser) {
       appendMessage(data.message, "left");
+      scrollToBottom();
     } else {
-      unread[data.senderEmail]++;
+      unread[data.senderEmail] = (unread[data.senderEmail] || 0) + 1;
       const badge = document.getElementById(`badge-${data.senderEmail}`);
-      badge.innerText = unread[data.senderEmail];
-      badge.style.display = "inline-block";
+      if (badge) {
+        badge.innerText = unread[data.senderEmail];
+        badge.style.display = "inline-block";
+      }
     }
   });
 
@@ -276,6 +311,11 @@
     div.className = `msg ${side}`;
     div.innerText = text;
     document.getElementById("messages").appendChild(div);
+  }
+
+  function scrollToBottom() {
+    const msgDiv = document.getElementById("messages");
+    msgDiv.scrollTop = msgDiv.scrollHeight;
   }
 
   function logout() {
