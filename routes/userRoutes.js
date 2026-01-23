@@ -1,22 +1,15 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
 const router = express.Router();
 const User = require("../models/User");
 
-// REGISTER / ADD USER
+// =======================
+// REGISTER / ADD USER (Plain Text)
+// =======================
 router.post("/add", async (req, res) => {
   try {
     const { firstName, lastName, mobile, email, password, login, address } = req.body;
 
-    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{6,}$/;
-    if (!strongPassword.test(password)) {
-      return res.status(400).json({
-        message: "Password must contain uppercase, lowercase & special character",
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+    // Direct password save kar rahe hain bina kisi hash ke
     const user = new User({
       firstName,
       lastName,
@@ -24,17 +17,22 @@ router.post("/add", async (req, res) => {
       email: email.toLowerCase(), // Normalize email
       login,
       address,
-      password: hashedPassword,
+      password: password, // 🔥 Plain password store ho raha hai
     });
 
     await user.save();
-    res.status(201).json({ message: "User registered successfully" });
+    res.status(201).json({ 
+      message: "User registered successfully (Plain Text Mode)",
+      user: { email: user.email, login: user.login }
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-// LOGIN USER
+// =======================
+// LOGIN USER (Plain Text Match)
+// =======================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -42,8 +40,10 @@ router.post("/login", async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: "Invalid password" });
+    // 🔥 Direct string comparison (No bcrypt.compare)
+    if (password !== user.password) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
 
     res.status(200).json({
       message: "Login successful",
@@ -59,6 +59,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// GET ALL USERS
 router.get("/all", async (req, res) => {
   const users = await User.find().select("-password");
   res.json(users);
