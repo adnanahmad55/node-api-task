@@ -7,6 +7,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const Message = require("./models/Message");
+const User = require("./models/User"); 
 const userRoutes = require("./routes/userRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 
@@ -15,69 +16,157 @@ require("dotenv").config();
 const app = express();
 const server = http.createServer(app);
 
+// MIDDLEWARES
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
+// ROUTES
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
 
-mongoose.connect(process.env.MONGO_URL)
+// MONGODB CONNECTION
+mongoose
+  .connect(process.env.MONGO_URL)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.log("❌ MongoDB Error:", err));
 
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
+app.get("/", (req, res) => {
+  res.send("🚀 Server is running");
+});
+
+// SOCKET.IO SETUP
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
   transports: ["websocket"],
 });
 
-const onlineUsers = new Map(); // email -> Set(socketIds)
+const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
+  console.log("🟢 Socket connected:", socket.id);
+
   socket.on("join", async ({ email }) => {
     if (!email) return;
-    socket.email = email;
 
-    if (!onlineUsers.has(email)) onlineUsers.set(email, new Set());
-    onlineUsers.get(email).add(socket.id);
+    const userEmail = email.toLowerCase();
 
-    console.log(`User Online: ${email}`);
-
-    // Send pending messages
-    const pending = await Message.find({ receiverEmail: email, delivered: false });
-    for (let m of pending) {
-      socket.emit("receive_message", { senderEmail: m.senderEmail, message: m.message });
-      m.delivered = true;
-      await m.save();
+    if (!onlineUsers.has(userEmail)) {
+      onlineUsers.set(userEmail, new Set());
     }
+    onlineUsers.get(userEmail).add(socket.id);
+    socket.email = userEmail;
 
-    // Broadcast updated online list
+    console.log("✅ User online:", userEmail);
+
+    // Jab koi join kare, list update karne ke liye broadcast
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
+    io.emit("sidebar_update"); 
+    
+    // SEND UNDELIVERED MESSAGES
+    try {
+      const pendingMessages = await Message.find({
+        receiverEmail: userEmail,
+        delivered: false,
+      }).sort({ createdAt: 1 });
+
+      for (let msg of pendingMessages) {
+        socket.emit("receive_message", {
+          senderEmail: msg.senderEmail,
+          message: msg.message,
+          time: msg.createdAt,
+        });
+      }
+
+      await Message.updateMany(
+        { receiverEmail: userEmail, delivered: false },
+        { delivered: true }
+      );
+    } catch (err) {
+      console.error("❌ Pending messages error:", err);
+    }
   });
 
   socket.on("send_message", async (data) => {
-    const { senderEmail, receiverEmail, message } = data;
-    const msg = await Message.create({ senderEmail, receiverEmail, message, delivered: false });
+    try {
+      const { senderEmail, receiverEmail, message } = data;
+      if (!senderEmail || !receiverEmail || !message) return;
 
-    if (onlineUsers.has(receiverEmail)) {
-      onlineUsers.get(receiverEmail).forEach(id => {
-        io.to(id).emit("receive_message", { senderEmail, message });
+      const sEmail = senderEmail.toLowerCase();
+      const rEmail = receiverEmail.toLowerCase();
+
+      const msg = await Message.create({
+        senderEmail: sEmail,
+        receiverEmail: rEmail,
+        message,
+        delivered: false,
+        read: false,
       });
-      msg.delivered = true;
-      await msg.save();
+
+      if (onlineUsers.has(rEmail)) {
+        onlineUsers.get(rEmail).forEach((sockId) => {
+          io.to(sockId).emit("receive_message", {
+            senderEmail: sEmail,
+            message,
+            time: msg.createdAt,
+          });
+        });
+
+        msg.delivered = true;
+        await msg.save();
+      }
+      
+      // Sidebar update for unread count/last msg
+      if (onlineUsers.has(rEmail)) {
+          onlineUsers.get(rEmail).forEach(id => io.to(id).emit("sidebar_update"));
+      }
+      
+    } catch (err) {
+      console.error("❌ send_message error:", err.message);
+    }
+  });
+
+  socket.on("mark_read", async ({ userEmail, otherEmail }) => {
+    try {
+      if(!userEmail || !otherEmail) return;
+      await Message.updateMany(
+        {
+          senderEmail: otherEmail.toLowerCase(),
+          receiverEmail: userEmail.toLowerCase(),
+          read: false,
+        },
+        { read: true }
+      );
+    } catch (err) {
+      console.error("❌ mark_read error:", err.message);
     }
   });
 
   socket.on("disconnect", () => {
-    if (socket.email && onlineUsers.has(socket.email)) {
-      onlineUsers.get(socket.email).delete(socket.id);
-      if (onlineUsers.get(socket.email).size === 0) {
-        onlineUsers.delete(socket.email);
+    const email = socket.email;
+    console.log("🔴 Socket disconnected:", socket.id);
+
+    if (email && onlineUsers.has(email)) {
+      onlineUsers.get(email).delete(socket.id);
+
+      if (onlineUsers.get(email).size === 0) {
+        onlineUsers.delete(email);
+        console.log("❌ User offline:", email);
       }
-      io.emit("live_users_list", Array.from(onlineUsers.keys()));
     }
+
+    io.emit("live_users_list", Array.from(onlineUsers.keys()));
   });
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server on ${PORT}`));
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
