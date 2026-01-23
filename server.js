@@ -5,6 +5,9 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
+const multer = require("multer");
+const { v2: cloudinary } = require("cloudinary");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
 const Message = require("./models/Message");
 const User = require("./models/User"); 
@@ -16,10 +19,44 @@ require("dotenv").config();
 const app = express();
 const server = http.createServer(app);
 
+// =====================
+// CLOUDINARY CONFIG (Uses Render Env Variables)
+// =====================
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'messenger_media',
+    resource_type: 'auto', // Detects image or video automatically
+  },
+});
+const upload = multer({ storage: storage });
+
 // MIDDLEWARES
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
+
+// =====================
+// MEDIA UPLOAD ROUTE
+// =====================
+app.post("/api/chat/upload", upload.single("file"), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    
+    // Check if it's a video or image based on mimetype
+    const type = req.file.mimetype.startsWith('video') ? 'video' : 'image';
+    res.json({ url: req.file.path, type: type });
+  } catch (err) {
+    console.error("Upload Error:", err);
+    res.status(500).json({ error: "Upload failed" });
+  }
+});
 
 // ROUTES
 app.use("/api/users", userRoutes);
@@ -41,10 +78,7 @@ app.get("/", (req, res) => {
 
 // SOCKET.IO SETUP
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
+  cors: { origin: "*", methods: ["GET", "POST"] },
   transports: ["websocket"],
 });
 
@@ -55,7 +89,6 @@ io.on("connection", (socket) => {
 
   socket.on("join", async ({ email }) => {
     if (!email) return;
-
     const userEmail = email.toLowerCase();
 
     if (!onlineUsers.has(userEmail)) {
@@ -64,13 +97,9 @@ io.on("connection", (socket) => {
     onlineUsers.get(userEmail).add(socket.id);
     socket.email = userEmail;
 
-    console.log("✅ User online:", userEmail);
-
-    // Jab koi join kare, list update karne ke liye broadcast
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
     io.emit("sidebar_update"); 
     
-    // SEND UNDELIVERED MESSAGES
     try {
       const pendingMessages = await Message.find({
         receiverEmail: userEmail,
@@ -81,6 +110,8 @@ io.on("connection", (socket) => {
         socket.emit("receive_message", {
           senderEmail: msg.senderEmail,
           message: msg.message,
+          fileUrl: msg.fileUrl,
+          messageType: msg.messageType,
           time: msg.createdAt,
         });
       }
@@ -96,16 +127,19 @@ io.on("connection", (socket) => {
 
   socket.on("send_message", async (data) => {
     try {
-      const { senderEmail, receiverEmail, message } = data;
-      if (!senderEmail || !receiverEmail || !message) return;
+      const { senderEmail, receiverEmail, message, fileUrl, messageType } = data;
+      if (!senderEmail || !receiverEmail) return;
 
       const sEmail = senderEmail.toLowerCase();
       const rEmail = receiverEmail.toLowerCase();
 
+      // Database mein save karein (text ho ya media)
       const msg = await Message.create({
         senderEmail: sEmail,
         receiverEmail: rEmail,
-        message,
+        message: message || "",
+        fileUrl: fileUrl || null,
+        messageType: messageType || 'text',
         delivered: false,
         read: false,
       });
@@ -114,7 +148,9 @@ io.on("connection", (socket) => {
         onlineUsers.get(rEmail).forEach((sockId) => {
           io.to(sockId).emit("receive_message", {
             senderEmail: sEmail,
-            message,
+            message: msg.message,
+            fileUrl: msg.fileUrl,
+            messageType: msg.messageType,
             time: msg.createdAt,
           });
         });
@@ -123,7 +159,6 @@ io.on("connection", (socket) => {
         await msg.save();
       }
       
-      // Sidebar update for unread count/last msg
       if (onlineUsers.has(rEmail)) {
           onlineUsers.get(rEmail).forEach(id => io.to(id).emit("sidebar_update"));
       }
@@ -151,17 +186,12 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     const email = socket.email;
-    console.log("🔴 Socket disconnected:", socket.id);
-
     if (email && onlineUsers.has(email)) {
       onlineUsers.get(email).delete(socket.id);
-
       if (onlineUsers.get(email).size === 0) {
         onlineUsers.delete(email);
-        console.log("❌ User offline:", email);
       }
     }
-
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
   });
 });

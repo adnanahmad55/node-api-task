@@ -1,14 +1,14 @@
-const mongoose = require("mongoose");
-
-const messageSchema = new mongoose.Schema(
-  {
+// models/Message.js
+const messageSchema = new mongoose.Schema({
     senderEmail: String,
     receiverEmail: String,
-    message: String,
+    message: String,        // Text or caption
+    fileUrl: String,        // URL of image/video
+    messageType: { 
+        type: String, 
+        enum: ['text', 'image', 'video'], 
+        default: 'text' 
+    },
     delivered: { type: Boolean, default: false },
-    read: { type: Boolean, default: false } // 🔥 NEW
-  },
-  { timestamps: true }
-);
-
-module.exports = mongoose.model("Message", messageSchema);
+    read: { type: Boolean, default: false }
+}, { timestamps: true });

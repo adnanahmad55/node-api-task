@@ -42,7 +42,6 @@
       outline: none;
     }
 
-    /* ========== PARTITION DESIGN ========== */
     .section-label {
       padding: 10px 15px;
       background: #f8f9fa;
@@ -135,6 +134,15 @@
     .left { background: #e4e6eb; align-self: flex-start; color: #050505; }
     .right { background: #0084ff; align-self: flex-end; color: white; }
 
+    /* Media Styling inside Chat */
+    .chat-media {
+      max-width: 100%;
+      border-radius: 10px;
+      margin-top: 5px;
+      display: block;
+      cursor: pointer;
+    }
+
     .input-box {
       padding: 15px;
       display: flex;
@@ -142,7 +150,7 @@
       border-top: 1px solid #ddd;
     }
 
-    .input-box input {
+    .input-box input[type="text"] {
       flex: 1;
       padding: 10px 15px;
       border-radius: 20px;
@@ -151,14 +159,19 @@
       background: #f0f2f5;
     }
 
-    .send-btn {
-      margin-left: 10px;
+    .send-btn, .attach-btn {
       background: none;
       border: none;
       color: #0084ff;
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       cursor: pointer;
+      margin-left: 10px;
+      display: flex;
+      align-items: center;
     }
+
+    .attach-btn { margin-left: 0; margin-right: 10px; color: #8a8d91; }
+    .attach-btn:hover { color: #0084ff; }
 
     .empty-state {
       flex: 1;
@@ -199,9 +212,19 @@
       <span id="chatTitle" style="font-weight: bold;"></span>
     </div>
     <div class="messages" id="messages"></div>
+    
     <div class="input-box">
-      <input id="messageInput" placeholder="Aa" onkeypress="if(event.key==='Enter') sendMessage()" />
-      <button class="send-btn" onclick="sendMessage()"><i class="bi bi-send-fill"></i></button>
+      <input type="file" id="mediaInput" style="display:none" accept="image/*,video/*" onchange="handleMediaUpload(this)">
+      
+      <button class="attach-btn" onclick="document.getElementById('mediaInput').click()">
+        <i class="bi bi-paperclip"></i>
+      </button>
+
+      <input id="messageInput" type="text" placeholder="Aa" onkeypress="if(event.key==='Enter') sendMessage()" />
+      
+      <button class="send-btn" onclick="sendMessage()">
+        <i class="bi bi-send-fill"></i>
+      </button>
     </div>
   </div>
 
@@ -224,7 +247,6 @@
   let currentOnlineEmails = [];
   let cachedUsers = [];
 
-  // 1. Fetch Users logic
   function fetchSidebarData() {
     fetch(`/api/chat/users/${loggedUser.email}`)
       .then(res => res.json())
@@ -234,18 +256,15 @@
       });
   }
 
-  // 2. Render Partitioned Sidebar
   function renderSidebar() {
     const onlineList = document.getElementById("onlineUsersList");
     const allList = document.getElementById("allUsersList");
-    
     onlineList.innerHTML = "";
     allList.innerHTML = "";
 
     cachedUsers.forEach(user => {
       const email = user.email.toLowerCase();
       if (email === loggedUser.email.toLowerCase()) return;
-
       const name = user.firstName || email;
       const initial = name.charAt(0).toUpperCase();
       const isOnline = currentOnlineEmails.includes(email);
@@ -264,25 +283,17 @@
           </div>
         </div>
       `;
-
-      if (isOnline) {
-        onlineList.insertAdjacentHTML('beforeend', userHtml);
-      } else {
-        allList.insertAdjacentHTML('beforeend', userHtml);
-      }
+      if (isOnline) onlineList.insertAdjacentHTML('beforeend', userHtml);
+      else allList.insertAdjacentHTML('beforeend', userHtml);
     });
-
-    // Hide Online label if no one is online
     document.getElementById("onlineLabel").style.display = onlineList.innerHTML === "" ? "none" : "block";
   }
 
-  // Socket: Update Status Dots
   socket.on("live_users_list", onlineEmails => {
     currentOnlineEmails = onlineEmails.map(e => e.toLowerCase());
     renderSidebar();
   });
 
-  // Socket: Refresh list if new user registers
   socket.on("sidebar_update", () => fetchSidebarData());
 
   function openChat(email, name) {
@@ -294,14 +305,20 @@
     document.getElementById("messages").innerHTML = "";
     
     unreadCount[email] = 0;
-    renderSidebar(); // Update badge
+    renderSidebar();
 
     socket.emit("mark_read", { userEmail: loggedUser.email, otherEmail: email });
 
     fetch(`/api/chat/messages/${loggedUser.email}/${email}`)
       .then(res => res.json())
       .then(msgs => {
-        msgs.forEach(m => appendMessage(m.message, m.senderEmail.toLowerCase() === loggedUser.email.toLowerCase() ? "right" : "left"));
+        msgs.forEach(m => {
+          // Pass media details to appendMessage
+          appendMessage(m.message, 
+            m.senderEmail.toLowerCase() === loggedUser.email.toLowerCase() ? "right" : "left",
+            m.fileUrl, 
+            m.messageType);
+        });
         scrollToBottom();
       });
   }
@@ -311,16 +328,60 @@
     const msg = input.value.trim();
     if (!msg || !activeUser) return;
 
-    socket.emit("send_message", { senderEmail: loggedUser.email, receiverEmail: activeUser, message: msg });
+    socket.emit("send_message", { 
+      senderEmail: loggedUser.email, 
+      receiverEmail: activeUser, 
+      message: msg,
+      messageType: 'text' 
+    });
     appendMessage(msg, "right");
     input.value = "";
     scrollToBottom();
   }
 
+  // --- NEW: Handle Media Selection ---
+  async function handleMediaUpload(input) {
+    if (!input.files[0] || !activeUser) return;
+    
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Placeholder message showing "Uploading..."
+    const tempId = Date.now();
+    appendMessage("Uploading media...", "right", null, "text", tempId);
+
+    try {
+      const res = await fetch("/api/chat/upload", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (data.url) {
+        // Remove "Uploading..." message
+        const tempMsg = document.getElementById(`msg-${tempId}`);
+        if(tempMsg) tempMsg.remove();
+
+        // Send via socket
+        socket.emit("send_message", {
+          senderEmail: loggedUser.email,
+          receiverEmail: activeUser,
+          message: "", 
+          fileUrl: data.url,
+          messageType: data.type
+        });
+
+        appendMessage("", "right", data.url, data.type);
+        scrollToBottom();
+      }
+    } catch (err) {
+      alert("Upload failed!");
+      console.error(err);
+    }
+  }
+
   socket.on("receive_message", data => {
     const sender = data.senderEmail.toLowerCase();
     if (sender === activeUser?.toLowerCase()) {
-      appendMessage(data.message, "left");
+      appendMessage(data.message, "left", data.fileUrl, data.messageType);
       scrollToBottom();
     } else {
       unreadCount[sender] = (unreadCount[sender] || 0) + 1;
@@ -328,10 +389,24 @@
     }
   });
 
-  function appendMessage(text, side) {
+  // --- UPDATED: appendMessage to handle media ---
+  function appendMessage(text, side, fileUrl = null, type = 'text', tempId = null) {
     const div = document.createElement("div");
     div.className = `msg ${side}`;
-    div.innerText = text;
+    if(tempId) div.id = `msg-${tempId}`;
+
+    if (type === 'image' && fileUrl) {
+      div.innerHTML = `<img src="${fileUrl}" class="chat-media" onclick="window.open('${fileUrl}')">`;
+      if(text) div.innerHTML += `<div>${text}</div>`;
+    } 
+    else if (type === 'video' && fileUrl) {
+      div.innerHTML = `<video src="${fileUrl}" controls class="chat-media"></video>`;
+      if(text) div.innerHTML += `<div>${text}</div>`;
+    } 
+    else {
+      div.innerText = text;
+    }
+    
     document.getElementById("messages").appendChild(div);
   }
 
@@ -345,7 +420,6 @@
     location.href = "index.html";
   }
 
-  // Initial Load
   fetchSidebarData();
 </script>
 
