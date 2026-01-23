@@ -1,5 +1,5 @@
 /* =========================================
-   1. GLOBAL & RESET STYLES
+    1. GLOBAL & RESET STYLES
    ========================================= */
 * {
     margin: 0;
@@ -8,18 +8,22 @@
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
+:root {
+    --vh: 1vh; /* Mobile keyboard height fix ke liye */
+}
+
 body {
     background: linear-gradient(120deg, #667eea, #764ba2);
     min-height: 100vh;
-    height: 100%; 
+    height: calc(var(--vh, 1vh) * 100);
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden; /* Desktop par scroll prevent karne ke liye */
+    overflow: hidden;
 }
 
 /* =========================================
-   2. CONTAINERS (Login/Register/Table)
+    2. CONTAINERS (Login/Register/Table)
    ========================================= */
 .container {
     background: #fff;
@@ -51,7 +55,7 @@ hr {
 }
 
 /* =========================================
-   3. FORM ELEMENTS
+    3. FORM ELEMENTS
    ========================================= */
 input {
     width: 100%;
@@ -83,24 +87,8 @@ button:hover {
     background: #5a67d8;
 }
 
-/* Nav Links */
-.nav {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 15px;
-}
-
-.nav a {
-    text-decoration: none;
-    padding: 8px 14px;
-    background: #667eea;
-    color: #fff;
-    border-radius: 5px;
-    font-size: 14px;
-}
-
 /* =========================================
-   4. MESSENGER LAYOUT (SIDEBAR + CHAT + GALLERY)
+    4. MESSENGER LAYOUT
    ========================================= */
 .sidebar {
     width: 320px;
@@ -109,6 +97,7 @@ button:hover {
     display: flex;
     flex-direction: column;
     box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    z-index: 10;
 }
 
 .sidebar-header {
@@ -127,20 +116,21 @@ button:hover {
     display: flex;
     flex-direction: column;
     background: #fff;
-    border-right: 1px solid #ddd;
+    height: 100%;
 }
 
-.gallery-panel {
-    width: 280px;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
+/* Back button for mobile navigation */
+.back-btn {
+    display: none; /* Desktop par hide */
+    font-size: 1.4rem;
+    margin-right: 15px;
+    cursor: pointer;
+    color: #0084ff;
 }
 
-/* Messages Area */
 .messages {
     flex: 1;
-    padding: 20px;
+    padding: 15px;
     background: #f0f2f5;
     overflow-y: auto;
     display: flex;
@@ -148,41 +138,22 @@ button:hover {
 }
 
 .msg {
-    max-width: 65%;
-    padding: 10px 15px;
+    max-width: 75%;
+    padding: 10px 14px;
     margin-bottom: 8px;
     border-radius: 18px;
     font-size: 0.95rem;
-    line-height: 1.4;
     word-wrap: break-word;
 }
 
 .left { background: #e4e6eb; align-self: flex-start; color: #050505; }
 .right { background: #0084ff; align-self: flex-end; color: white; }
 
-/* Media Styling */
-.chat-media {
-    max-width: 100%;
-    border-radius: 10px;
-    margin-top: 5px;
-    display: block;
-    cursor: pointer;
-}
-
-.gallery-item {
-    width: 100%;
-    aspect-ratio: 1;
-    border-radius: 8px;
-    object-fit: cover;
-    cursor: pointer;
-    background: #eee;
-}
-
 /* =========================================
-   5. INPUT BOX & ATTACHMENTS
+    5. INPUT BOX & MEDIA
    ========================================= */
 .input-box {
-    padding: 15px;
+    padding: 10px 15px;
     display: flex;
     align-items: center;
     border-top: 1px solid #ddd;
@@ -194,24 +165,26 @@ button:hover {
     padding: 10px 15px;
     border-radius: 20px;
     border: 1px solid #ddd;
-    outline: none;
     background: #f0f2f5;
-    margin-bottom: 0; /* Override global margin */
+    margin-bottom: 0;
 }
 
-.send-btn, .attach-btn {
-    background: none;
-    border: none;
-    color: #0084ff;
-    font-size: 1.4rem;
-    cursor: pointer;
-    margin-left: 10px;
+.chat-media {
+    max-width: 100%;
+    border-radius: 10px;
+    margin-top: 5px;
 }
 
-.attach-btn { color: #8a8d91; margin-left: 0; margin-right: 10px; }
+.gallery-panel {
+    width: 280px;
+    background: #fff;
+    border-left: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+}
 
 /* =========================================
-   6. STATUS & BADGES
+    6. STATUS & BADGES
    ========================================= */
 .status-dot {
     height: 12px;
@@ -231,44 +204,47 @@ button:hover {
     border-radius: 10px;
     padding: 2px 8px;
     font-size: 11px;
-    font-weight: bold;
 }
 
 /* =========================================
-   7. MOBILE KEYBOARD & RESPONSIVE FIXES
+    7. MOBILE KEYBOARD & RESPONSIVE
    ========================================= */
 @media (max-width: 768px) {
     body {
         align-items: flex-start;
-        overflow: hidden;
-        position: fixed; /* Screen shift prevent karne ke liye */
-        width: 100%;
-        height: 100%;
     }
 
-    .sidebar, .gallery-panel {
-        display: none !important; /* Mobile par sirf chat area dikhega */
+    .sidebar {
+        width: 100%;
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        z-index: 20;
+    }
+
+    /* Jab chat active ho toh sidebar hide ho jaye */
+    body.chat-active .sidebar {
+        display: none !important;
     }
 
     .chat-area {
         width: 100% !important;
-        height: 100vh;
+        height: 100%;
         position: fixed;
         top: 0;
         left: 0;
-        z-index: 100;
     }
 
-    .messages {
-        flex: 1;
-        padding-bottom: 80px; /* Space for input box */
+    .gallery-panel {
+        display: none !important;
+    }
+
+    .back-btn {
+        display: block; /* Mobile par back arrow dikhega */
     }
 
     .input-box {
-        position: fixed;
-        bottom: 0;
-        width: 100%;
-        z-index: 110;
-        padding-bottom: env(safe-area-inset-bottom);
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
     }
 }

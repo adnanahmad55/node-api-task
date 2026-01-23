@@ -10,171 +10,43 @@
 
   <style>
     * { box-sizing: border-box; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
-    body { margin: 0; height: 100vh; display: flex; background: #f0f2f5; color: #1c1e21; overflow: hidden; }
+    /* Height dynamic fix for mobile browsers */
+    :root { --vh: 1vh; }
+    body { margin: 0; height: calc(var(--vh, 1vh) * 100); display: flex; background: #f0f2f5; color: #1c1e21; overflow: hidden; }
 
     /* ========== SIDEBAR ========== */
-    .sidebar {
-      width: 320px;
-      background: #fff;
-      border-right: 1px solid #ddd;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.05);
-      transition: 0.3s;
-    }
-
-    .sidebar-header {
-      padding: 20px 15px;
-      background: #0084ff;
-      color: white;
-      font-size: 1.2rem;
-      font-weight: bold;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
+    .sidebar { width: 320px; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: 0.3s; }
+    .sidebar-header { padding: 20px 15px; background: #0084ff; color: white; font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
     .user-search { padding: 10px; background: #f0f2f5; }
-    .user-search input {
-      width: 100%;
-      padding: 8px 12px;
-      border-radius: 20px;
-      border: 1px solid #ddd;
-      outline: none;
-    }
-
-    .section-label {
-      padding: 10px 15px;
-      background: #f8f9fa;
-      font-size: 11px;
-      color: #8a8d91;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid #f0f2f5;
-    }
-
+    .user-search input { width: 100%; padding: 8px 12px; border-radius: 20px; border: 1px solid #ddd; outline: none; }
+    .section-label { padding: 10px 15px; background: #f8f9fa; font-size: 11px; color: #8a8d91; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f0f2f5; }
     .users-list-container { flex: 1; overflow-y: auto; }
 
-    .chat-user {
-      padding: 12px 15px;
-      border-bottom: 1px solid #f0f2f5;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      transition: 0.2s;
-    }
+    .chat-user { padding: 12px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; align-items: center; }
     .chat-user:hover { background: #f5f6f7; }
-    
     .avatar-container { position: relative; margin-right: 12px; }
-    .avatar {
-      width: 45px;
-      height: 45px;
-      background: #e4e6eb;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      color: #050505;
-    }
-
-    .status-dot {
-      height: 12px;
-      width: 12px;
-      border-radius: 50%;
-      position: absolute;
-      bottom: 2px;
-      right: 2px;
-      border: 2px solid white;
-    }
+    .avatar { width: 45px; height: 45px; background: #e4e6eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #050505; }
+    .status-dot { height: 12px; width: 12px; border-radius: 50%; position: absolute; bottom: 2px; right: 2px; border: 2px solid white; }
     .online { background-color: #31a24c; } 
     .offline { background-color: #bec3c9; }
-
     .user-info { flex: 1; }
     .user-info .name { font-weight: 600; font-size: 0.95rem; }
-    
-    .badge {
-      background: #fa3e3e;
-      color: white;
-      border-radius: 10px;
-      padding: 2px 8px;
-      font-size: 11px;
-      font-weight: bold;
-    }
+    .badge { background: #fa3e3e; color: white; border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: bold; }
 
     /* ========== CHAT AREA ========== */
-    .chat-area { flex: 1; display: flex; flex-direction: column; background: #fff; border-right: 1px solid #ddd; }
-    .chat-header {
-      padding: 15px;
-      border-bottom: 1px solid #ddd;
-      display: flex;
-      align-items: center;
-      background: #fff;
-    }
-
-    /* Back button for mobile */
+    .chat-area { flex: 1; display: flex; flex-direction: column; background: #fff; border-right: 1px solid #ddd; height: 100%; }
+    .chat-header { padding: 15px; border-bottom: 1px solid #ddd; display: flex; align-items: center; background: #fff; }
     .back-btn { display: none; font-size: 1.5rem; margin-right: 10px; cursor: pointer; color: #0084ff; }
 
-    .messages {
-      flex: 1;
-      padding: 20px;
-      background: #f0f2f5;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .msg {
-      max-width: 65%;
-      padding: 10px 15px;
-      margin-bottom: 8px;
-      border-radius: 18px;
-      font-size: 0.95rem;
-      line-height: 1.4;
-      word-wrap: break-word;
-    }
-
+    .messages { flex: 1; padding: 20px; background: #f0f2f5; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
+    .msg { max-width: 65%; padding: 10px 15px; margin-bottom: 8px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
     .left { background: #e4e6eb; align-self: flex-start; color: #050505; }
     .right { background: #0084ff; align-self: flex-end; color: white; }
 
-    .chat-media {
-      max-width: 100%;
-      border-radius: 10px;
-      margin-top: 5px;
-      display: block;
-      cursor: pointer;
-    }
+    .input-box { padding: 15px; display: flex; align-items: center; border-top: 1px solid #ddd; background: white; }
+    .input-box input[type="text"] { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ddd; outline: none; background: #f0f2f5; font-size: 16px; }
 
-    .input-box {
-      padding: 15px;
-      display: flex;
-      align-items: center;
-      border-top: 1px solid #ddd;
-      background: white;
-    }
-
-    .input-box input[type="text"] {
-      flex: 1;
-      padding: 10px 15px;
-      border-radius: 20px;
-      border: 1px solid #ddd;
-      outline: none;
-      background: #f0f2f5;
-      font-size: 16px; /* Prevents auto-zoom on iOS */
-    }
-
-    .send-btn, .attach-btn {
-      background: none;
-      border: none;
-      color: #0084ff;
-      font-size: 1.4rem;
-      cursor: pointer;
-      margin-left: 10px;
-      display: flex;
-      align-items: center;
-    }
-
+    .send-btn, .attach-btn { background: none; border: none; color: #0084ff; font-size: 1.4rem; cursor: pointer; margin-left: 10px; display: flex; align-items: center; }
     .attach-btn { margin-left: 0; margin-right: 10px; color: #8a8d91; }
 
     /* ========== MEDIA GALLERY PANEL ========== */
@@ -185,19 +57,16 @@
 
     .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8a8d91; }
 
-    /* ========== MOBILE RESPONSIVE FIXES ========== */
+    /* ========== MOBILE FIXES ========== */
     @media (max-width: 768px) {
-      .sidebar { width: 100%; position: absolute; height: 100%; z-index: 10; }
+      .sidebar { width: 100%; position: absolute; height: 100%; z-index: 10; left: 0; top: 0; }
       .chat-area { width: 100%; }
       .gallery-panel { display: none !important; }
       .back-btn { display: block; }
-      
-      /* Hide sidebar when chat is active on mobile */
       body.chat-active .sidebar { transform: translateX(-100%); }
     }
   </style>
 </head>
-
 <body>
 
 <div class="sidebar" id="sidebar">
@@ -205,15 +74,12 @@
     <span>Messages</span>
     <i class="bi bi-box-arrow-right" style="cursor:pointer" onclick="logout()"></i>
   </div>
-  
   <div class="user-search">
     <input type="text" placeholder="Search Messenger">
   </div>
-
   <div class="users-list-container">
     <div class="section-label" id="onlineLabel">Online Contacts</div>
     <div id="onlineUsersList"></div>
-    
     <div class="section-label">All Conversations</div>
     <div id="allUsersList"></div>
   </div>
@@ -227,7 +93,6 @@
       <span id="chatTitle" style="font-weight: bold;"></span>
     </div>
     <div class="messages" id="messages"></div>
-    
     <div class="input-box">
       <input type="file" id="mediaInput" style="display:none" accept="image/*,video/*" onchange="handleMediaUpload(this)">
       <button class="attach-btn" onclick="document.getElementById('mediaInput').click()">
@@ -237,7 +102,6 @@
       <button class="send-btn" onclick="sendMessage()"><i class="bi bi-send-fill"></i></button>
     </div>
   </div>
-
   <div id="emptyState" class="empty-state">
     <i class="bi bi-chat-dots" style="font-size: 4rem; margin-bottom: 10px;"></i>
     <p>Select a contact to start chatting</p>
@@ -250,9 +114,16 @@
 </div>
 
 <script>
+  // Mobile Browser height fix
+  function setDocHeight() {
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+  };
+  window.addEventListener('resize', setDocHeight);
+  window.addEventListener('orientationchange', setDocHeight);
+  setDocHeight();
+
   const socket = io("https://node-api-task-nl8e.onrender.com", { transports: ["websocket"] });
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
-  
   if (!loggedUser) location.href = "index.html";
 
   socket.emit("join", { email: loggedUser.email });
@@ -293,9 +164,7 @@
           <div class="user-info">
             <div class="name">${name}</div>
           </div>
-          <div id="badge-${email}" class="badge" style="display:${unreadCount[email] > 0 ? 'inline-block' : 'none'}">
-            ${unreadCount[email] || 0}
-          </div>
+          <div id="badge-${email}" class="badge" style="display:${unreadCount[email] > 0 ? 'inline-block' : 'none'}">${unreadCount[email] || 0}</div>
         </div>
       `;
       if (isOnline) onlineList.insertAdjacentHTML('beforeend', userHtml);
@@ -313,33 +182,23 @@
 
   function openChat(email, name) {
     activeUser = email;
-    document.body.classList.add('chat-active'); // For mobile view
+    document.body.classList.add('chat-active');
     document.getElementById("emptyState").style.display = "none";
     document.getElementById("activeChatUI").style.display = "flex";
-    
-    // Gallery only on Desktop
-    if(window.innerWidth > 768) {
-        document.getElementById("galleryPanel").style.display = "flex";
-    }
-
+    if(window.innerWidth > 768) { document.getElementById("galleryPanel").style.display = "flex"; }
     document.getElementById("chatTitle").innerText = name;
     document.getElementById("headerAvatar").innerText = name.charAt(0).toUpperCase();
     document.getElementById("messages").innerHTML = "";
     document.getElementById("galleryContent").innerHTML = ""; 
-    
     unreadCount[email] = 0;
     renderSidebar();
 
     socket.emit("mark_read", { userEmail: loggedUser.email, otherEmail: email });
-
     fetch(`/api/chat/messages/${loggedUser.email}/${email}`)
       .then(res => res.json())
       .then(msgs => {
         msgs.forEach(m => {
-          appendMessage(m.message, 
-            m.senderEmail.toLowerCase() === loggedUser.email.toLowerCase() ? "right" : "left",
-            m.fileUrl, 
-            m.messageType);
+          appendMessage(m.message, m.senderEmail.toLowerCase() === loggedUser.email.toLowerCase() ? "right" : "left", m.fileUrl, m.messageType);
         });
         scrollToBottom();
       });
@@ -354,13 +213,7 @@
     const input = document.getElementById("messageInput");
     const msg = input.value.trim();
     if (!msg || !activeUser) return;
-
-    socket.emit("send_message", { 
-      senderEmail: loggedUser.email, 
-      receiverEmail: activeUser, 
-      message: msg,
-      messageType: 'text' 
-    });
+    socket.emit("send_message", { senderEmail: loggedUser.email, receiverEmail: activeUser, message: msg, messageType: 'text' });
     appendMessage(msg, "right");
     input.value = "";
     scrollToBottom();
@@ -371,32 +224,19 @@
     const file = input.files[0];
     const formData = new FormData();
     formData.append("file", file);
-
     const tempId = Date.now();
     appendMessage("Uploading media...", "right", null, "text", tempId);
-
     try {
       const res = await fetch("/api/chat/upload", { method: "POST", body: formData });
       const data = await res.json();
-
       if (data.url) {
         const tempMsg = document.getElementById(`msg-${tempId}`);
         if(tempMsg) tempMsg.remove();
-
-        socket.emit("send_message", {
-          senderEmail: loggedUser.email,
-          receiverEmail: activeUser,
-          message: "", 
-          fileUrl: data.url,
-          messageType: data.type
-        });
-
+        socket.emit("send_message", { senderEmail: loggedUser.email, receiverEmail: activeUser, message: "", fileUrl: data.url, messageType: data.type });
         appendMessage("", "right", data.url, data.type);
         scrollToBottom();
       }
-    } catch (err) {
-      alert("Upload failed!");
-    }
+    } catch (err) { alert("Upload failed!"); }
   }
 
   socket.on("receive_message", data => {
@@ -414,21 +254,11 @@
     const div = document.createElement("div");
     div.className = `msg ${side}`;
     if(tempId) div.id = `msg-${tempId}`;
-
     if (fileUrl) {
-      if (type === 'image') {
-        div.innerHTML = `<img src="${fileUrl}" class="chat-media" onclick="window.open('${fileUrl}')">`;
-        addToGallery(fileUrl, 'image');
-      } 
-      else if (type === 'video') {
-        div.innerHTML = `<video src="${fileUrl}" controls class="chat-media"></video>`;
-        addToGallery(fileUrl, 'video');
-      }
+      if (type === 'image') { div.innerHTML = `<img src="${fileUrl}" class="chat-media" onclick="window.open('${fileUrl}')">`; addToGallery(fileUrl, 'image'); } 
+      else if (type === 'video') { div.innerHTML = `<video src="${fileUrl}" controls class="chat-media"></video>`; addToGallery(fileUrl, 'video'); }
       if(text) div.innerHTML += `<div>${text}</div>`;
-    } 
-    else {
-      div.innerText = text;
-    }
+    } else { div.innerText = text; }
     document.getElementById("messages").appendChild(div);
   }
 
@@ -436,8 +266,7 @@
     const gallery = document.getElementById("galleryContent");
     if (type === 'image') {
         const img = document.createElement("img");
-        img.src = url; img.className = "gallery-item";
-        img.onclick = () => window.open(url);
+        img.src = url; img.className = "gallery-item"; img.onclick = () => window.open(url);
         gallery.prepend(img);
     } else if (type === 'video') {
         const vid = document.createElement("video");
@@ -446,26 +275,23 @@
     }
   }
 
-  function scrollToBottom() {
-    const m = document.getElementById("messages");
-    m.scrollTop = m.scrollHeight;
-  }
+  function scrollToBottom() { const m = document.getElementById("messages"); m.scrollTop = m.scrollHeight; }
+  function logout() { localStorage.clear(); location.href = "index.html"; }
 
-  function logout() {
-    localStorage.clear();
-    location.href = "index.html";
-  }
-
-  // Keyboard Fix for Mobile: Adjust height when keyboard appears
+  // Keyboard and Height Fix
   if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
           document.body.style.height = window.visualViewport.height + 'px';
           scrollToBottom();
       });
   }
+  
+  // Force focus for mobile input
+  document.getElementById('messageInput').addEventListener('touchstart', function() {
+      this.focus();
+  });
 
   fetchSidebarData();
 </script>
-
 </body>
 </html>
