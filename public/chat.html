@@ -9,47 +9,49 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
+    /* Global Styles */
     * { box-sizing: border-box; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
-    /* Height dynamic fix for mobile browsers */
     :root { --vh: 1vh; }
     body { margin: 0; height: calc(var(--vh, 1vh) * 100); display: flex; background: #f0f2f5; color: #1c1e21; overflow: hidden; }
 
-    /* ========== SIDEBAR ========== */
-    .sidebar { width: 320px; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: 0.3s; }
+    /* ========== SIDEBAR (Clean Design) ========== */
+    .sidebar { width: 320px; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: 0.3s; z-index: 10; }
     .sidebar-header { padding: 20px 15px; background: #0084ff; color: white; font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
     .user-search { padding: 10px; background: #f0f2f5; }
     .user-search input { width: 100%; padding: 8px 12px; border-radius: 20px; border: 1px solid #ddd; outline: none; }
     .section-label { padding: 10px 15px; background: #f8f9fa; font-size: 11px; color: #8a8d91; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f0f2f5; }
     .users-list-container { flex: 1; overflow-y: auto; }
 
-    .chat-user { padding: 12px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; align-items: center; }
+    /* User Item & Online Status Indicators */
+    .chat-user { padding: 12px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; display: flex; align-items: center; transition: background 0.2s; }
     .chat-user:hover { background: #f5f6f7; }
     .avatar-container { position: relative; margin-right: 12px; }
     .avatar { width: 45px; height: 45px; background: #e4e6eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #050505; }
     .status-dot { height: 12px; width: 12px; border-radius: 50%; position: absolute; bottom: 2px; right: 2px; border: 2px solid white; }
     .online { background-color: #31a24c; } 
     .offline { background-color: #bec3c9; }
-    .user-info { flex: 1; }
-    .user-info .name { font-weight: 600; font-size: 0.95rem; }
     .badge { background: #fa3e3e; color: white; border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: bold; }
 
     /* ========== CHAT AREA ========== */
     .chat-area { flex: 1; display: flex; flex-direction: column; background: #fff; border-right: 1px solid #ddd; height: 100%; }
-    .chat-header { padding: 15px; border-bottom: 1px solid #ddd; display: flex; align-items: center; background: #fff; }
+    .chat-header { padding: 15px; border-bottom: 1px solid #ddd; display: flex; align-items: center; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     .back-btn { display: none; font-size: 1.5rem; margin-right: 10px; cursor: pointer; color: #0084ff; }
 
-    .messages { flex: 1; padding: 20px; background: #f0f2f5; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
-    .msg { max-width: 65%; padding: 10px 15px; margin-bottom: 8px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
-    .left { background: #e4e6eb; align-self: flex-start; color: #050505; }
-    .right { background: #0084ff; align-self: flex-end; color: white; }
+    .messages { flex: 1; padding: 20px; background: #f0f2f5; overflow-y: auto; display: flex; flex-direction: column; scroll-behavior: smooth; }
+    .msg { max-width: 65%; padding: 10px 15px; margin-bottom: 8px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; position: relative; }
+    .left { background: #e4e6eb; align-self: flex-start; color: #050505; border-bottom-left-radius: 4px; }
+    .right { background: #0084ff; align-self: flex-end; color: white; border-bottom-right-radius: 4px; }
 
-    .input-box { padding: 15px; display: flex; align-items: center; border-top: 1px solid #ddd; background: white; }
-    .input-box input[type="text"] { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ddd; outline: none; background: #f0f2f5; font-size: 16px; }
+    /* ========== INPUT BAR (Icons Added) ========== */
+    .input-box { padding: 10px 15px; display: flex; align-items: center; border-top: 1px solid #ddd; background: white; }
+    .input-box input[type="text"] { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ddd; outline: none; background: #f0f2f5; font-size: 16px; margin: 0 10px; }
+    
+    .icon-btn { background: none; border: none; color: #0084ff; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; transition: transform 0.1s; }
+    .icon-btn:active { transform: scale(0.9); }
+    .icon-btn.secondary { color: #8a8d91; }
 
-    .send-btn, .attach-btn { background: none; border: none; color: #0084ff; font-size: 1.4rem; cursor: pointer; margin-left: 10px; display: flex; align-items: center; }
-    .attach-btn { margin-left: 0; margin-right: 10px; color: #8a8d91; }
-
-    /* ========== MEDIA GALLERY PANEL ========== */
+    /* ========== MEDIA & GALLERY ========== */
+    .chat-media { max-width: 100%; border-radius: 10px; margin-top: 5px; display: block; cursor: pointer; }
     .gallery-panel { width: 280px; background: #fff; display: flex; flex-direction: column; }
     .gallery-header { padding: 15px; border-bottom: 1px solid #ddd; font-weight: bold; text-align: center; background: #f8f9fa; }
     .gallery-content { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-content: start; }
@@ -57,13 +59,14 @@
 
     .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8a8d91; }
 
-    /* ========== MOBILE FIXES ========== */
+    /* ========== MOBILE RESPONSIVE ========== */
     @media (max-width: 768px) {
-      .sidebar { width: 100%; position: absolute; height: 100%; z-index: 10; left: 0; top: 0; }
+      .sidebar { width: 100%; position: absolute; height: 100%; left: 0; top: 0; }
       .chat-area { width: 100%; }
       .gallery-panel { display: none !important; }
       .back-btn { display: block; }
       body.chat-active .sidebar { transform: translateX(-100%); }
+      .msg { max-width: 85%; }
     }
   </style>
 </head>
@@ -93,15 +96,30 @@
       <span id="chatTitle" style="font-weight: bold;"></span>
     </div>
     <div class="messages" id="messages"></div>
+    
     <div class="input-box">
       <input type="file" id="mediaInput" style="display:none" accept="image/*,video/*" onchange="handleMediaUpload(this)">
-      <button class="attach-btn" onclick="document.getElementById('mediaInput').click()">
-        <i class="bi bi-paperclip"></i>
+      
+      <button class="icon-btn secondary" onclick="document.getElementById('mediaInput').click()">
+        <i class="bi bi-plus-circle-fill"></i>
       </button>
+
+      <button class="icon-btn secondary">
+        <i class="bi bi-emoji-smile"></i>
+      </button>
+
       <input id="messageInput" type="text" placeholder="Aa" onkeypress="if(event.key==='Enter') sendMessage()" />
-      <button class="send-btn" onclick="sendMessage()"><i class="bi bi-send-fill"></i></button>
+
+      <button class="icon-btn secondary" id="voiceBtn">
+        <i class="bi bi-mic-fill"></i>
+      </button>
+
+      <button class="icon-btn" onclick="sendMessage()">
+        <i class="bi bi-send-fill"></i>
+      </button>
     </div>
   </div>
+
   <div id="emptyState" class="empty-state">
     <i class="bi bi-chat-dots" style="font-size: 4rem; margin-bottom: 10px;"></i>
     <p>Select a contact to start chatting</p>
@@ -114,7 +132,7 @@
 </div>
 
 <script>
-  // Mobile Browser height fix
+  // Dynamic height fix for mobile browsers
   function setDocHeight() {
       document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
   };
@@ -126,6 +144,7 @@
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
   if (!loggedUser) location.href = "index.html";
 
+  // Login session check based on personal context
   socket.emit("join", { email: loggedUser.email });
 
   let activeUser = null;
@@ -278,7 +297,7 @@
   function scrollToBottom() { const m = document.getElementById("messages"); m.scrollTop = m.scrollHeight; }
   function logout() { localStorage.clear(); location.href = "index.html"; }
 
-  // Keyboard and Height Fix
+  // Visual viewport resize handling for mobile keyboard
   if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
           document.body.style.height = window.visualViewport.height + 'px';
@@ -286,7 +305,6 @@
       });
   }
   
-  // Force focus for mobile input
   document.getElementById('messageInput').addEventListener('touchstart', function() {
       this.focus();
   });
