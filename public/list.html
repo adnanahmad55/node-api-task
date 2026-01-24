@@ -15,7 +15,7 @@
     .nav { margin-bottom: 20px; text-align: right; }
     .nav a { background: #fa3e3e; color: white; padding: 8px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; }
 
-    /* 🔥 Notification Toaster Styling */
+    /* 🔥 Toaster Notification Styling */
     .toaster {
         position: fixed; top: 20px; right: 20px; background: #0084ff; color: white;
         padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
@@ -61,31 +61,32 @@
     window.location.href = "index.html";
   }
 
-  // User list cache taaki email se naam nikal sakein
   let cachedUsersForToaster = [];
 
-  socket.emit("join", { email: loggedUser.email });
+  // 🔥 Fix 1: Join with 'list' view so messages remain UNREAD on server
+  socket.emit("join", { email: loggedUser.email, view: "list" });
 
-  // 🔥 Fixed Receive Message Logic for List Page
+  // 🔥 Fix 2: Enhanced Toaster Notification logic
   socket.on("receive_message", data => {
       const senderEmail = data.senderEmail.toLowerCase();
       
-      // Email se user ka naam dhundna
+      // Find display name from cached list
       const userObj = cachedUsersForToaster.find(u => u.email.toLowerCase() === senderEmail);
       const displayName = userObj ? `${userObj.firstName} ${userObj.lastName || ''}` : senderEmail;
 
       const toaster = document.getElementById("msgToaster");
-      toaster.innerText = `New message from ${displayName}`;
+      // Show name and a small preview of the message
+      toaster.innerText = `📩 ${displayName}: ${data.message || 'Sent a file'}`;
       toaster.style.display = "block";
       
-      // Toaster click par chat khul jaye
+      // Click on toaster to jump to specific chat
       toaster.onclick = () => {
           window.location.href = `chat.html?email=${encodeURIComponent(senderEmail)}`;
       };
       
-      setTimeout(() => { toaster.style.display = "none"; }, 4000);
+      setTimeout(() => { toaster.style.display = "none"; }, 5000);
 
-      // 🔥 Title Blinking Logic (Background Tab ke liye)
+      // 🔥 Fix 3: Background Tab Blinking (WhatsApp Style)
       if (document.hidden) {
           const oldTitle = document.title;
           const alertMsg = "📩 NEW MESSAGE!";
@@ -98,19 +99,22 @@
               document.title = oldTitle;
           };
 
+          // Native Browser Notification
           if (Notification.permission === "granted") {
-              new Notification("New Message", { body: `From: ${displayName}` });
+              new Notification("New Message", { body: `${displayName} sent you a message.` });
           }
       }
   });
 
+  // Request browser permission for notifications
   if (Notification.permission !== "granted") {
       Notification.requestPermission();
   }
 
   $(document).ready(function () {
+    // Load users and store in cache for toaster mapping
     $.get("https://node-api-task-nl8e.onrender.com/api/users/all", function (data) {
-        cachedUsersForToaster = data; // Cache store kiya
+        cachedUsersForToaster = data; 
         $("#userTable").html("");
 
         if (data.length === 0) {

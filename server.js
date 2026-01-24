@@ -49,11 +49,11 @@ app.post("/api/chat/upload", upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     
-    // 🔥 Voice notes (.webm) ko handle karne ke liye logic
+    // Voice notes aur media detection fix
     let type = 'image';
-    if (req.file.mimetype.startsWith('video')) type = 'video';
-    if (req.file.mimetype.startsWith('audio') || req.file.originalname.endsWith('.webm')) type = 'video'; 
-    // Note: HTML5 video player .webm audio files ko mast play karta hai
+    const mime = req.file.mimetype;
+    if (mime.startsWith('video')) type = 'video';
+    if (mime.startsWith('audio') || req.file.originalname.endsWith('.webm')) type = 'video'; 
 
     res.json({ url: req.file.path, type: type });
   } catch (err) {
@@ -72,13 +72,8 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.log("❌ MongoDB Error:", err));
 
-app.get("/health", (req, res) => {
-  res.status(200).send("OK");
-});
-
-app.get("/", (req, res) => {
-  res.send("🚀 Server is running");
-});
+app.get("/health", (req, res) => res.status(200).send("OK"));
+app.get("/", (req, res) => res.send("🚀 Server is running"));
 
 // SOCKET.IO SETUP
 const io = new Server(server, {
@@ -91,7 +86,7 @@ const onlineUsers = new Map();
 io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
 
-  socket.on("join", async ({ email }) => {
+  socket.on("join", async ({ email, view }) => {
     if (!email) return;
     const userEmail = email.toLowerCase();
 
@@ -102,12 +97,18 @@ io.on("connection", (socket) => {
     socket.email = userEmail;
 
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
-    io.emit("sidebar_update"); 
     
     try {
+      // Delivered status update (sirf online hone par)
+      await Message.updateMany(
+        { receiverEmail: userEmail, delivered: false },
+        { delivered: true }
+      );
+
+      // Pending messages sirf unhe bhejo jo delivered nahi huye the
       const pendingMessages = await Message.find({
         receiverEmail: userEmail,
-        delivered: false,
+        read: false, // Sirf unread messages ko refresh par notify karo
       }).sort({ createdAt: 1 });
 
       for (let msg of pendingMessages) {
@@ -119,13 +120,11 @@ io.on("connection", (socket) => {
           time: msg.createdAt,
         });
       }
-
-      await Message.updateMany(
-        { receiverEmail: userEmail, delivered: false },
-        { delivered: true }
-      );
+      
+      // Sidebar refresh logic
+      io.emit("sidebar_update"); 
     } catch (err) {
-      console.error("❌ Pending messages error:", err);
+      console.error("❌ Join Error:", err);
     }
   });
 
@@ -139,7 +138,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // SEND MESSAGE (With Voice & Toaster Support)
+  // SEND MESSAGE
   socket.on("send_message", async (data) => {
     try {
       const { senderEmail, receiverEmail, message, fileUrl, messageType } = data;
@@ -160,7 +159,6 @@ io.on("connection", (socket) => {
 
       if (onlineUsers.has(rEmail)) {
         onlineUsers.get(rEmail).forEach((sockId) => {
-          // Receiver ko message bhejna (Frontend par yahi toaster trigger karega)
           io.to(sockId).emit("receive_message", {
             senderEmail: sEmail,
             message: msg.message,
@@ -174,7 +172,8 @@ io.on("connection", (socket) => {
         await msg.save();
       }
       
-      // Sidebar update for unread badges
+      // Notify sidebar update for both (last msg & badges)
+      onlineUsers.get(sEmail)?.forEach(id => io.to(id).emit("sidebar_update"));
       if (onlineUsers.has(rEmail)) {
           onlineUsers.get(rEmail).forEach(id => io.to(id).emit("sidebar_update"));
       }
@@ -184,17 +183,21 @@ io.on("connection", (socket) => {
     }
   });
 
+  // MARK READ logic (Frontend se trigger hoga jab chat khulegi)
   socket.on("mark_read", async ({ userEmail, otherEmail }) => {
     try {
       if(!userEmail || !otherEmail) return;
+      const me = userEmail.toLowerCase();
+      const other = otherEmail.toLowerCase();
+
       await Message.updateMany(
-        {
-          senderEmail: otherEmail.toLowerCase(),
-          receiverEmail: userEmail.toLowerCase(),
-          read: false,
-        },
-        { read: true }
+        { senderEmail: other, receiverEmail: me, read: false },
+        { read: true, delivered: true }
       );
+
+      // Dono ko notify karo taaki badge hat jaye
+      onlineUsers.get(me)?.forEach(id => io.to(id).emit("sidebar_update"));
+      onlineUsers.get(other)?.forEach(id => io.to(id).emit("sidebar_update"));
     } catch (err) {
       console.error("❌ mark_read error:", err.message);
     }
@@ -205,9 +208,7 @@ io.on("connection", (socket) => {
     if (email && onlineUsers.has(email)) {
       const socketSet = onlineUsers.get(email);
       socketSet.delete(socket.id);
-      if (socketSet.size === 0) {
-        onlineUsers.delete(email);
-      }
+      if (socketSet.size === 0) onlineUsers.delete(email);
     }
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
   });
