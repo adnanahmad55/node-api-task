@@ -219,18 +219,21 @@
     });
   }
 
+// 🔥 FIXED: renderSidebar (Duplicate users aur double sorting fix)
 function renderSidebar() {
     const onlineList = document.getElementById("onlineUsersList");
     const allList = document.getElementById("allUsersList");
+    if (!onlineList || !allList) return;
+    
     onlineList.innerHTML = ""; 
     allList.innerHTML = "";
 
-    // Sabse pehle users ko last message time ke according sort kar lo
+    // 1. Ek baar sorting karein
     cachedUsers.sort((a, b) => new Date(b.lastMsgTime || 0) - new Date(a.lastMsgTime || 0));
 
     cachedUsers.forEach(user => {
       const email = user.email.toLowerCase();
-      if (email === loggedUser.email.toLowerCase()) return; // Khud ko list se bahar rakho
+      if (email === loggedUser.email.toLowerCase()) return; 
 
       const isOnline = currentOnlineEmails.includes(email);
       const name = user.firstName || email;
@@ -251,7 +254,7 @@ function renderSidebar() {
           </div>
         </div>`;
 
-     
+      // 2. 🔥 FIX: Duplicate hatane ke liye isOnline check
       if (isOnline) {
           onlineList.insertAdjacentHTML('beforeend', userHtml);
       } else {
@@ -259,23 +262,25 @@ function renderSidebar() {
       }
     });
 
-    // Agar koi online nahi hai toh header hide kar do
     document.getElementById("onlineLabel").style.display = onlineList.innerHTML === "" ? "none" : "block";
 }
 
-  socket.on("live_users_list", emails => { currentOnlineEmails = emails.map(e => e.toLowerCase()); renderSidebar(); });
-  socket.on("sidebar_update", fetchSidebarData);
-
-  function openChat(email, name) {
+// 🔥 FIXED: openChat (Gallery panel visibility fix)
+function openChat(email, name) {
     activeUser = email;
     document.body.classList.add('chat-active');
     document.getElementById("emptyState").style.display = "none";
     document.getElementById("activeChatUI").style.display = "flex";
-    if(window.innerWidth > 768) document.getElementById("galleryPanel").style.display = "flex";
+    
+    // Desktop par Gallery dikhayein
+    const gallery = document.getElementById("galleryPanel");
+    if(window.innerWidth > 768 && gallery) { gallery.style.display = "flex"; }
+    
     document.getElementById("chatTitle").innerText = name;
     document.getElementById("headerAvatar").innerText = name.charAt(0).toUpperCase();
     document.getElementById("messages").innerHTML = "";
     document.getElementById("galleryContent").innerHTML = "";
+    
     unreadCount[email] = 0;
     renderSidebar();
 
@@ -284,7 +289,7 @@ function renderSidebar() {
       msgs.forEach(m => appendMessage(m.message, m.senderEmail.toLowerCase() === loggedUser.email.toLowerCase() ? "right" : "left", m.fileUrl, m.messageType));
       scrollToBottom();
     });
-  }
+}
 
   function sendMessage() {
     const input = document.getElementById("messageInput");
