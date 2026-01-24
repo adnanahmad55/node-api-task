@@ -219,14 +219,19 @@
     });
   }
 
-  function renderSidebar() {
+function renderSidebar() {
     const onlineList = document.getElementById("onlineUsersList");
     const allList = document.getElementById("allUsersList");
-    onlineList.innerHTML = ""; allList.innerHTML = "";
+    onlineList.innerHTML = ""; 
+    allList.innerHTML = "";
+
+    // Sabse pehle users ko last message time ke according sort kar lo
+    cachedUsers.sort((a, b) => new Date(b.lastMsgTime || 0) - new Date(a.lastMsgTime || 0));
 
     cachedUsers.forEach(user => {
       const email = user.email.toLowerCase();
-      if (email === loggedUser.email.toLowerCase()) return;
+      if (email === loggedUser.email.toLowerCase()) return; // Khud ko list se bahar rakho
+
       const isOnline = currentOnlineEmails.includes(email);
       const name = user.firstName || email;
       const initial = name.charAt(0).toUpperCase();
@@ -241,13 +246,22 @@
             <div class="name">${name}</div>
             <div class="last-msg">${user.lastMessage || "No messages yet"}</div>
           </div>
-          <div class="badge" style="display:${unreadCount[email] > 0 ? 'inline-block' : 'none'}">${unreadCount[email] || 0}</div>
+          <div class="badge" style="display:${unreadCount[email] > 0 ? 'inline-block' : 'none'}">
+            ${unreadCount[email] || 0}
+          </div>
         </div>`;
-      if (isOnline) onlineList.insertAdjacentHTML('beforeend', userHtml);
-      else allList.insertAdjacentHTML('beforeend', userHtml);
+
+     
+      if (isOnline) {
+          onlineList.insertAdjacentHTML('beforeend', userHtml);
+      } else {
+          allList.insertAdjacentHTML('beforeend', userHtml);
+      }
     });
+
+    // Agar koi online nahi hai toh header hide kar do
     document.getElementById("onlineLabel").style.display = onlineList.innerHTML === "" ? "none" : "block";
-  }
+}
 
   socket.on("live_users_list", emails => { currentOnlineEmails = emails.map(e => e.toLowerCase()); renderSidebar(); });
   socket.on("sidebar_update", fetchSidebarData);
