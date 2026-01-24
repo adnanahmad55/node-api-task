@@ -7,66 +7,19 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
-    /* Table layout improvements for better resolution */
-    .table-container {
-      width: 90%;
-      margin: 30px auto;
-      max-width: 1000px;
-    }
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      border-radius: 8px;
-      overflow: hidden;
-    }
+    .table-container { width: 90%; margin: 30px auto; max-width: 1000px; }
+    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+    th { background: #0084ff; color: white; padding: 15px; text-align: left; }
+    td { padding: 12px 15px; border-bottom: 1px solid #eee; }
+    tr:hover { background-color: #f9f9f9; }
+    .nav { margin-bottom: 20px; text-align: right; }
+    .nav a { background: #fa3e3e; color: white; padding: 8px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; }
 
-    th {
-      background: #0084ff;
-      color: white;
-      padding: 15px;
-      text-align: left;
-    }
-
-    td {
-      padding: 12px 15px;
-      border-bottom: 1px solid #eee;
-    }
-
-    tr:hover {
-      background-color: #f9f9f9;
-    }
-
-    .nav {
-      margin-bottom: 20px;
-      text-align: right;
-    }
-
-    .nav a {
-      background: #fa3e3e;
-      color: white;
-      padding: 8px 20px;
-      border-radius: 5px;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    /* 🔥 Notification Toaster Styling added here */
+    /* 🔥 Notification Toaster Styling */
     .toaster {
-        position: fixed; 
-        top: 20px; 
-        right: 20px; 
-        background: #0084ff; 
-        color: white;
-        padding: 12px 20px; 
-        border-radius: 8px; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        z-index: 1000; 
-        display: none; 
-        cursor: pointer; 
-        font-weight: bold;
+        position: fixed; top: 20px; right: 20px; background: #0084ff; color: white;
+        padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 1000; display: none; cursor: pointer; font-weight: bold;
         animation: slideIn 0.3s ease;
     }
     @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
@@ -78,7 +31,6 @@
 <div id="msgToaster" class="toaster"></div>
 
 <div class="table-container">
-
   <div class="nav">
     <a href="chat.html" style="background: #0084ff; margin-right: 10px;">Go to Messenger</a>
     <a href="index.html" onclick="logout()">Logout</a>
@@ -95,16 +47,13 @@
         <th>City</th>
       </tr>
     </thead>
-    <tbody id="userTable">
-      </tbody>
+    <tbody id="userTable"></tbody>
   </table>
 
   <p id="msg" style="text-align:center; margin-top:10px;"></p>
-
 </div>
 
 <script>
-  // Socket setup for real-time notifications
   const socket = io("https://node-api-task-nl8e.onrender.com", { transports: ["websocket"] });
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
   
@@ -112,58 +61,56 @@
     window.location.href = "index.html";
   }
 
-  // Join the user to their socket room
+  // User list cache taaki email se naam nikal sakein
+  let cachedUsersForToaster = [];
+
   socket.emit("join", { email: loggedUser.email });
 
-  // 🔥 Receive Message Notification logic added
-socket.on("receive_message", data => {
-    const sender = data.senderEmail.toLowerCase();
+  // 🔥 Fixed Receive Message Logic for List Page
+  socket.on("receive_message", data => {
+      const senderEmail = data.senderEmail.toLowerCase();
+      
+      // Email se user ka naam dhundna
+      const userObj = cachedUsersForToaster.find(u => u.email.toLowerCase() === senderEmail);
+      const displayName = userObj ? `${userObj.firstName} ${userObj.lastName || ''}` : senderEmail;
 
-    // 1. Agar user usi chat par hai, toh sirf message append karo
-    if (sender === activeUser?.toLowerCase()) {
-        appendMessage(data.message, "left", data.fileUrl, data.messageType);
-        scrollToBottom();
-    } else {
-        // 2. Unread count aur normal toaster (Current tab ke liye)
-        unreadCount[sender] = (unreadCount[sender] || 0) + 1;
-        renderSidebar();
-        
-        const toaster = document.getElementById("msgToaster");
-        toaster.innerText = `New message from ${sender}`;
-        toaster.style.display = "block";
-        setTimeout(() => toaster.style.display = "none", 4000);
+      const toaster = document.getElementById("msgToaster");
+      toaster.innerText = `New message from ${displayName}`;
+      toaster.style.display = "block";
+      
+      // Toaster click par chat khul jaye
+      toaster.onclick = () => {
+          window.location.href = `chat.html?email=${encodeURIComponent(senderEmail)}`;
+      };
+      
+      setTimeout(() => { toaster.style.display = "none"; }, 4000);
 
-        // 🔥 3. DUSRE TAB KE LIYE LOGIC (Title Blinking)
-        if (document.hidden) {
-            const oldTitle = document.title;
-            const alertMsg = "📩 NEW MESSAGE!";
-            
-            // Tab ka naam badalta rahega taaki user ka dhyan jaye
-            const blinkInterval = setInterval(() => {
-                document.title = (document.title === alertMsg) ? oldTitle : alertMsg;
-            }, 1000);
+      // 🔥 Title Blinking Logic (Background Tab ke liye)
+      if (document.hidden) {
+          const oldTitle = document.title;
+          const alertMsg = "📩 NEW MESSAGE!";
+          const blinkInterval = setInterval(() => {
+              document.title = (document.title === alertMsg) ? oldTitle : alertMsg;
+          }, 1000);
 
-            // Jaise hi user tab par wapas aaye, sab normal kar do
-            window.onfocus = () => {
-                clearInterval(blinkInterval);
-                document.title = oldTitle;
-            };
+          window.onfocus = () => {
+              clearInterval(blinkInterval);
+              document.title = oldTitle;
+          };
 
-            // 4. Browser Native Notification (Optional - Permission chahiye hoti hai)
-            if (Notification.permission === "granted") {
-                new Notification("New Message", { body: `From: ${sender}`, icon: '/logo.png' });
-            }
-        }
-    }
-});
+          if (Notification.permission === "granted") {
+              new Notification("New Message", { body: `From: ${displayName}` });
+          }
+      }
+  });
 
-// Browser Notification ki permission maangne ke liye page load par ye add karein
-if (Notification.permission !== "granted") {
-    Notification.requestPermission();
-}
+  if (Notification.permission !== "granted") {
+      Notification.requestPermission();
+  }
 
   $(document).ready(function () {
     $.get("https://node-api-task-nl8e.onrender.com/api/users/all", function (data) {
+        cachedUsersForToaster = data; // Cache store kiya
         $("#userTable").html("");
 
         if (data.length === 0) {
@@ -175,7 +122,7 @@ if (Notification.permission !== "granted") {
             if (user.email !== loggedUser.email) {
                 $("#userTable").append(`
                   <tr>
-                    <td><strong>${user.firstName} ${user.lastName}</strong></td>
+                    <td><strong>${user.firstName} ${user.lastName || ''}</strong></td>
                     <td>${user.mobile || "-"}</td>
                     <td>${user.email}</td>
                     <td>${user.address?.city || "-"}</td>
@@ -185,7 +132,7 @@ if (Notification.permission !== "granted") {
         });
       }
     ).fail(function() {
-        $("#msg").text("Failed to load users. Please check server connection.").css("color", "red");
+        $("#msg").text("Failed to load users.").css("color", "red");
     });
   });
 
