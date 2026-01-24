@@ -255,27 +255,41 @@
     } catch (err) { alert("Upload failed!"); }
   }
 
-  socket.on("receive_message", data => {
-    const sender = data.senderEmail.toLowerCase();
-    if (sender === activeUser?.toLowerCase()) {
+socket.on("receive_message", data => {
+    const senderEmail = data.senderEmail.toLowerCase();
+
+    if (senderEmail === activeUser?.toLowerCase()) {
         appendMessage(data.message, "left", data.fileUrl, data.messageType);
         scrollToBottom();
     } else {
-        unreadCount[sender] = (unreadCount[sender] || 0) + 1;
+        unreadCount[senderEmail] = (unreadCount[senderEmail] || 0) + 1;
         renderSidebar();
+
+        // 🔥 FIX: Email se User ka Naam dhundna
+        const userObj = cachedUsers.find(u => u.email.toLowerCase() === senderEmail);
+        const displayName = userObj ? (userObj.firstName || senderEmail) : senderEmail;
+
         const toaster = document.getElementById("msgToaster");
-        toaster.innerText = `New message from ${sender}`;
+        
+        // Notification mein ab Email ki jagah Naam dikhega
+        toaster.innerText = `New message from ${displayName}`; 
+        
         toaster.style.display = "block";
-        toaster.onclick = () => openChat(sender, sender);
+        toaster.onclick = () => openChat(senderEmail, displayName);
+        
         setTimeout(() => toaster.style.display = "none", 4000);
+
+        // Title Blinking Logic (Background tab ke liye)
         if (document.hidden) {
             const oldTitle = document.title;
-            const alertMsg = "📩 NEW MESSAGE!";
-            const blinkInterval = setInterval(() => { document.title = (document.title === alertMsg) ? oldTitle : alertMsg; }, 1000);
+            const alertMsg = `📩 Message from ${displayName}`;
+            const blinkInterval = setInterval(() => { 
+                document.title = (document.title === alertMsg) ? oldTitle : alertMsg; 
+            }, 1000);
             window.onfocus = () => { clearInterval(blinkInterval); document.title = oldTitle; };
         }
     }
-  });
+});
 
   function appendMessage(text, side, fileUrl = null, type = 'text', tempId = null) {
     const div = document.createElement("div"); div.className = `msg ${side}`;
