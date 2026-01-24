@@ -5,11 +5,11 @@ const messageSchema = new mongoose.Schema({
     receiverEmail: String,
     message: String,
     fileUrl: { type: String, default: null },
-    messageType: { 
-        type: String, 
-        enum: ['text', 'image', 'video'], 
-        default: 'text' 
-    },
+messageType: { 
+    type: String, 
+    enum: ['text', 'image', 'video', 'audio'], // 🔥 'audio' add kiya
+    default: 'text' 
+},
     delivered: { type: Boolean, default: false },
     read: { type: Boolean, default: false }
 }, { timestamps: true });

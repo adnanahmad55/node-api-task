@@ -48,7 +48,13 @@ app.use(express.static(path.join(__dirname, "public")));
 app.post("/api/chat/upload", upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    const type = req.file.mimetype.startsWith('video') ? 'video' : 'image';
+    
+    // 🔥 Voice notes (.webm) ko handle karne ke liye logic
+    let type = 'image';
+    if (req.file.mimetype.startsWith('video')) type = 'video';
+    if (req.file.mimetype.startsWith('audio') || req.file.originalname.endsWith('.webm')) type = 'video'; 
+    // Note: HTML5 video player .webm audio files ko mast play karta hai
+
     res.json({ url: req.file.path, type: type });
   } catch (err) {
     console.error("Upload Error:", err);
@@ -123,7 +129,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 🔥 NEW: TYPING INDICATOR logic
+  // TYPING INDICATOR
   socket.on("typing", ({ receiverEmail, isTyping }) => {
     const rEmail = receiverEmail.toLowerCase();
     if (onlineUsers.has(rEmail)) {
@@ -133,6 +139,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // SEND MESSAGE (With Voice & Toaster Support)
   socket.on("send_message", async (data) => {
     try {
       const { senderEmail, receiverEmail, message, fileUrl, messageType } = data;
@@ -153,6 +160,7 @@ io.on("connection", (socket) => {
 
       if (onlineUsers.has(rEmail)) {
         onlineUsers.get(rEmail).forEach((sockId) => {
+          // Receiver ko message bhejna (Frontend par yahi toaster trigger karega)
           io.to(sockId).emit("receive_message", {
             senderEmail: sEmail,
             message: msg.message,
@@ -166,6 +174,7 @@ io.on("connection", (socket) => {
         await msg.save();
       }
       
+      // Sidebar update for unread badges
       if (onlineUsers.has(rEmail)) {
           onlineUsers.get(rEmail).forEach(id => io.to(id).emit("sidebar_update"));
       }
