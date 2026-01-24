@@ -7,7 +7,7 @@ const messageSchema = new mongoose.Schema({
     fileUrl: { type: String, default: null },
 messageType: { 
     type: String, 
-    enum: ['text', 'image', 'video', 'audio'], // 🔥 'audio' add kiya
+    enum: ['text', 'image', 'video', 'audio'], 
     default: 'text' 
 },
     delivered: { type: Boolean, default: false },

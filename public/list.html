@@ -4,6 +4,7 @@
   <title>User Directory | Registered Users</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
 
   <style>
     /* Table layout improvements for better resolution */
@@ -51,10 +52,30 @@
       text-decoration: none;
       font-weight: bold;
     }
+
+    /* 🔥 Notification Toaster Styling added here */
+    .toaster {
+        position: fixed; 
+        top: 20px; 
+        right: 20px; 
+        background: #0084ff; 
+        color: white;
+        padding: 12px 20px; 
+        border-radius: 8px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 1000; 
+        display: none; 
+        cursor: pointer; 
+        font-weight: bold;
+        animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
   </style>
 </head>
 
 <body>
+
+<div id="msgToaster" class="toaster"></div>
 
 <div class="table-container">
 
@@ -83,15 +104,34 @@
 </div>
 
 <script>
+  // Socket setup for real-time notifications
+  const socket = io("https://node-api-task-nl8e.onrender.com", { transports: ["websocket"] });
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
   
-  // Security Check: Bina login ke list bhi nahi dikhni chahiye
   if (!loggedUser || !loggedUser.email) {
     window.location.href = "index.html";
   }
 
+  // Join the user to their socket room
+  socket.emit("join", { email: loggedUser.email });
+
+  // 🔥 Receive Message Notification logic added
+  socket.on("receive_message", (data) => {
+      const sender = data.senderEmail;
+      const toaster = document.getElementById("msgToaster");
+      
+      toaster.innerText = `New message from ${sender}`;
+      toaster.style.display = "block";
+      
+      // Click on toaster to go to that chat
+      toaster.onclick = () => {
+          window.location.href = `chat.html?email=${encodeURIComponent(sender)}`;
+      };
+
+      setTimeout(() => { toaster.style.display = "none"; }, 4000);
+  });
+
   $(document).ready(function () {
-    // API call to fetch all users
     $.get("https://node-api-task-nl8e.onrender.com/api/users/all", function (data) {
         $("#userTable").html("");
 
@@ -101,7 +141,6 @@
         }
 
         data.forEach(user => {
-            // Self-account ko list mein dikhane ki zarurat nahi hai
             if (user.email !== loggedUser.email) {
                 $("#userTable").append(`
                   <tr>
