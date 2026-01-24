@@ -296,20 +296,51 @@
     } catch (err) { alert("Upload failed!"); }
   }
 
-  socket.on("receive_message", data => {
+socket.on("receive_message", data => {
     const sender = data.senderEmail.toLowerCase();
+
+    // 1. Agar user usi chat par hai, toh sirf message append karo
     if (sender === activeUser?.toLowerCase()) {
-      appendMessage(data.message, "left", data.fileUrl, data.messageType); scrollToBottom();
+        appendMessage(data.message, "left", data.fileUrl, data.messageType);
+        scrollToBottom();
     } else {
-      unreadCount[sender] = (unreadCount[sender] || 0) + 1;
-      const toaster = document.getElementById("msgToaster");
-      toaster.innerText = `New message from ${sender}`;
-      toaster.style.display = "block";
-      toaster.onclick = () => openChat(sender, sender);
-      setTimeout(() => toaster.style.display = "none", 4000);
-      fetchSidebarData();
+        // 2. Unread count aur normal toaster (Current tab ke liye)
+        unreadCount[sender] = (unreadCount[sender] || 0) + 1;
+        renderSidebar();
+        
+        const toaster = document.getElementById("msgToaster");
+        toaster.innerText = `New message from ${sender}`;
+        toaster.style.display = "block";
+        setTimeout(() => toaster.style.display = "none", 4000);
+
+        // 🔥 3. DUSRE TAB KE LIYE LOGIC (Title Blinking)
+        if (document.hidden) {
+            const oldTitle = document.title;
+            const alertMsg = "📩 NEW MESSAGE!";
+            
+            // Tab ka naam badalta rahega taaki user ka dhyan jaye
+            const blinkInterval = setInterval(() => {
+                document.title = (document.title === alertMsg) ? oldTitle : alertMsg;
+            }, 1000);
+
+            // Jaise hi user tab par wapas aaye, sab normal kar do
+            window.onfocus = () => {
+                clearInterval(blinkInterval);
+                document.title = oldTitle;
+            };
+
+            // 4. Browser Native Notification (Optional - Permission chahiye hoti hai)
+            if (Notification.permission === "granted") {
+                new Notification("New Message", { body: `From: ${sender}`, icon: '/logo.png' });
+            }
+        }
     }
-  });
+});
+
+// Browser Notification ki permission maangne ke liye page load par ye add karein
+if (Notification.permission !== "granted") {
+    Notification.requestPermission();
+}
 
   function appendMessage(text, side, fileUrl = null, type = 'text', tempId = null) {
     const div = document.createElement("div"); div.className = `msg ${side}`;
