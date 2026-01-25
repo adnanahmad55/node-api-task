@@ -20,7 +20,7 @@
         display: block; 
         margin-top: 5px;
         cursor: pointer;
-        object-fit: cover;
+        object-fit: contain;
     }
 
     /* 🔥 strictly slim audio player, NO background boxes */
@@ -32,10 +32,10 @@
         background: transparent !important; 
     }
 
-    /* Right side controls white fix */
+    /* Right side (My messages) - White controls on blue background */
     .right audio { filter: invert(100%) hue-rotate(180deg); }
 
-    /* Recording Timer */
+    /* Recording Timer Styling */
     #recordingTimer { font-size: 14px; color: #fa3e3e; margin-left: 10px; display: none; font-weight: bold; }
 
     .toaster { position: fixed; top: 20px; right: 20px; background: #0084ff; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; display: none; animation: slideIn 0.3s ease; cursor: pointer; }
@@ -66,9 +66,10 @@
     .chat-header { padding: 15px; border-bottom: 1px solid #ddd; display: flex; align-items: center; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     .back-btn { display: none; font-size: 1.5rem; margin-right: 10px; cursor: pointer; color: #0084ff; }
     .messages { flex: 1; padding: 20px; background: #f0f2f5; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
-    .msg { max-width: 70%; padding: 10px 15px; margin-bottom: 8px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
+    .msg { max-width: 75%; padding: 10px 15px; margin-bottom: 8px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
     .left { background: #e4e6eb; align-self: flex-start; color: #050505; }
     .right { background: #0084ff; align-self: flex-end; color: white; }
+    
     .input-box { padding: 10px 15px; display: flex; align-items: center; border-top: 1px solid #ddd; background: white; }
     .input-box input[type="text"] { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ddd; outline: none; background: #f0f2f5; font-size: 16px; margin: 0 10px; }
     .icon-btn { background: none; border: none; color: #0084ff; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; transition: transform 0.1s; }
@@ -123,7 +124,9 @@
       <span id="recordingTimer">00:00</span>
       <input id="messageInput" type="text" placeholder="Aa" onkeypress="if(event.key==='Enter') sendMessage()" />
       <button class="icon-btn secondary" id="voiceBtn"><i class="bi bi-mic-fill"></i></button>
-      <button class="icon-btn" onclick="sendMessage()"><i class="bi bi-send-fill"></i></button>
+      <button class="icon-btn" onclick="sendMessage()">
+        <i class="bi bi-send-fill"></i>
+      </button>
     </div>
   </div>
   <div id="emptyState" class="empty-state">
@@ -139,8 +142,7 @@
 
 <script>
   function setDocHeight() { document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`); };
-  window.addEventListener('resize', setDocHeight);
-  setDocHeight();
+  window.addEventListener('resize', setDocHeight); setDocHeight();
 
   const socket = io("https://node-api-task-nl8e.onrender.com", { transports: ["websocket"] });
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
@@ -153,16 +155,12 @@
   let currentOnlineEmails = [];
   let cachedUsers = [];
 
-  // Emoji Picker logic
   const picker = document.getElementById('picker');
   document.getElementById('emojiBtn').onclick = () => { picker.style.display = (picker.style.display === 'block') ? 'none' : 'block'; };
   picker.addEventListener('emoji-click', event => { document.getElementById('messageInput').value += event.detail.unicode; picker.style.display = 'none'; });
 
-  // Recording Logic with Timer
-  let mediaRecorder;
-  let audioChunks = [];
-  let timerInterval;
-  let seconds = 0;
+  // ========== RECORDING LOGIC ==========
+  let mediaRecorder; let audioChunks = []; let timerInterval; let seconds = 0;
   const voiceBtn = document.getElementById('voiceBtn');
   const timerDisplay = document.getElementById('recordingTimer');
 
@@ -189,8 +187,9 @@
           const res = await fetch("/api/chat/upload", { method: "POST", body: formData });
           const data = await res.json();
           if (data.url) {
-            socket.emit("send_message", { senderEmail: loggedUser.email, receiverEmail: activeUser, message: "", fileUrl: data.url, messageType: 'audio' });
-            appendMessage("", "right", data.url, 'audio');
+            const secureUrl = data.url.replace("http://", "https://");
+            socket.emit("send_message", { senderEmail: loggedUser.email, receiverEmail: activeUser, message: "", fileUrl: secureUrl, messageType: 'audio' });
+            appendMessage("", "right", secureUrl, 'audio');
           }
         };
         mediaRecorder.start(); startTimer();
@@ -204,10 +203,18 @@
     }
   };
 
+  // ========== CORE CHAT LOGIC ==========
   function fetchSidebarData() {
     fetch(`/api/chat/users/${loggedUser.email}`).then(res => res.json()).then(users => {
-      cachedUsers = users; renderSidebar();
-      // Handle direct redirect from list.html
+      // UNIQUE FILTER: Removes duplicates
+      const uniqueUsers = []; const emailsSeen = new Set();
+      users.forEach(u => {
+          if(!emailsSeen.has(u.email.toLowerCase())) {
+              emailsSeen.add(u.email.toLowerCase()); uniqueUsers.push(u);
+          }
+      });
+      cachedUsers = uniqueUsers; renderSidebar();
+      
       const urlParams = new URLSearchParams(window.location.search);
       const targetEmail = urlParams.get('email');
       if (targetEmail && !activeUser) {
@@ -235,7 +242,10 @@
             <div class="avatar">${initial}</div>
             <div class="status-dot ${isOnline ? 'online' : 'offline'}"></div>
           </div>
-          <div class="user-info"><div class="name">${name}</div><div class="last-msg">${user.lastMessage || "No messages yet"}</div></div>
+          <div class="user-info">
+            <div class="name">${name}</div>
+            <div class="last-msg">${user.lastMessage || "No messages yet"}</div>
+          </div>
           <div class="badge" style="display:${unreadCount[email] > 0 ? 'inline-block' : 'none'}">${unreadCount[email] || 0}</div>
         </div>`;
       if (isOnline) onlineList.insertAdjacentHTML('beforeend', userHtml);
@@ -281,11 +291,13 @@
       const res = await fetch("/api/chat/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (data.url) {
+        // Force HTTPS and Remove Placeholder
+        const secureUrl = data.url.replace("http://", "https://");
         document.getElementById(`msg-${tempId}`)?.remove();
-        socket.emit("send_message", { senderEmail: loggedUser.email, receiverEmail: activeUser, message: "", fileUrl: data.url, messageType: data.type });
-        appendMessage("", "right", data.url, data.type); scrollToBottom();
+        socket.emit("send_message", { senderEmail: loggedUser.email, receiverEmail: activeUser, message: "", fileUrl: secureUrl, messageType: data.type });
+        appendMessage("", "right", secureUrl, data.type); scrollToBottom();
       }
-    } catch (err) { alert("Upload failed!"); }
+    } catch (err) { alert("Upload failed!"); document.getElementById(`msg-${tempId}`)?.remove(); }
   }
 
   socket.on("receive_message", data => {
@@ -300,29 +312,25 @@
         toaster.innerText = `📩 ${displayName}: ${data.message || 'Media'}`;
         toaster.style.display = "block"; toaster.onclick = () => openChat(senderEmail, displayName);
         setTimeout(() => toaster.style.display = "none", 4000);
-        if (document.hidden) {
-            const oldTitle = document.title; const alertMsg = `📩 Message from ${displayName}`;
-            const blink = setInterval(() => { document.title = (document.title === alertMsg) ? oldTitle : alertMsg; }, 1000);
-            window.onfocus = () => { clearInterval(blink); document.title = oldTitle; };
-        }
     }
   });
 
-  // 🔥 STRIKT AUDIO VS VIDEO FIX
+  // 🔥 THE FINAL MEDIA RENDERER
   function appendMessage(text, side, fileUrl = null, type = 'text', tempId = null) {
     const div = document.createElement("div"); div.className = `msg ${side}`;
     if(tempId) div.id = `msg-${tempId}`;
     if (fileUrl) {
       const urlLower = fileUrl.toLowerCase();
-      // Comprehensive check to force audio player
+      // Forces audio tag for voice recordings and webm files
       const isVoice = type === 'audio' || urlLower.includes('voice_msg') || urlLower.includes('webm') || urlLower.match(/\.(mp3|wav|m4a|ogg)$/i);
+      
       if (type === 'image') {
         div.innerHTML = `<img src="${fileUrl}" class="chat-media" onclick="window.open('${fileUrl}')">`;
         addToGallery(fileUrl, 'image');
       } else if (isVoice) {
         div.innerHTML = `<audio src="${fileUrl}" controls preload="metadata"></audio>`;
       } else {
-        div.innerHTML = `<video src="${fileUrl}" controls class="chat-media"></video>`;
+        div.innerHTML = `<video class="chat-media" controls preload="metadata" playsinline><source src="${fileUrl}"></video>`;
         addToGallery(fileUrl, 'video');
       }
       if(text) { const tDiv = document.createElement("div"); tDiv.style.marginTop = "5px"; tDiv.innerText = text; div.appendChild(tDiv); }
@@ -340,7 +348,6 @@
   function scrollToBottom() { const m = document.getElementById("messages"); m.scrollTop = m.scrollHeight; }
   function logout() { localStorage.clear(); location.href = "index.html"; }
   function closeChatMobile() { document.body.classList.remove('chat-active'); activeUser = null; }
-  if (window.visualViewport) { window.visualViewport.addEventListener('resize', () => { document.body.style.height = window.visualViewport.height + 'px'; scrollToBottom(); }); }
   fetchSidebarData();
 </script>
 </body>
