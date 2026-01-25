@@ -49,13 +49,12 @@ app.post("/api/chat/upload", upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     
-    // 🔥 Improved Audio/Video detection logic
+    // Improved Audio/Video detection logic for Cloudinary uploads
     let type = 'image';
     const mime = req.file.mimetype;
     if (mime.startsWith('video')) type = 'video';
     if (mime.startsWith('audio') || req.file.originalname.endsWith('.webm')) type = 'video'; 
-    // Note: Use 'video' type in database to allow playback in HTML players, 
-    // but frontend logic will handle specific audio rendering.
+    // Logic: HTML5 video players can play .webm audio, handled as video type in DB
 
     res.json({ url: req.file.path, type: type });
   } catch (err) {
@@ -101,15 +100,14 @@ io.on("connection", (socket) => {
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
     
     try {
-      // Delivered tabhi hoga jab user online hai
+      // Mark messages as delivered when user comes online
       await Message.updateMany(
         { receiverEmail: userEmail, delivered: false },
         { delivered: true }
       );
 
-      // 🔥 Note: Pending messages emit karna yahan se band kar diya hai 
-      // kyunki chat history API frontend par history refresh karti hai.
-      // Isse duplicate messages ki dikkat nahi aayegi.
+      // Note: Emitting pending messages is disabled here to prevent history duplicates.
+      // The frontend chat history API handles fetching all previous logs.
       
       io.emit("sidebar_update"); 
     } catch (err) {
@@ -161,7 +159,7 @@ io.on("connection", (socket) => {
         await msg.save();
       }
       
-      // Sidebar update for both
+      // Update sidebar for both sender (last msg) and receiver (badges)
       onlineUsers.get(sEmail)?.forEach(id => io.to(id).emit("sidebar_update"));
       if (onlineUsers.has(rEmail)) {
           onlineUsers.get(rEmail).forEach(id => io.to(id).emit("sidebar_update"));
@@ -172,7 +170,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // MARK READ logic
+  // MARK READ logic - Triggered when user opens a chat
   socket.on("mark_read", async ({ userEmail, otherEmail }) => {
     try {
       if(!userEmail || !otherEmail) return;
@@ -184,7 +182,7 @@ io.on("connection", (socket) => {
         { read: true, delivered: true }
       );
 
-      // Dono side sidebar/unread badges update karo
+      // Notify both clients to clear unread UI badges
       onlineUsers.get(me)?.forEach(id => io.to(id).emit("sidebar_update"));
       onlineUsers.get(other)?.forEach(id => io.to(id).emit("sidebar_update"));
     } catch (err) {

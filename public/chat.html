@@ -22,11 +22,19 @@
         cursor: pointer;
         object-fit: cover;
     }
-    audio { 
+    /* Audio player logic to remove big blue background */
+    .msg audio { 
         max-width: 220px; 
         height: 45px; 
         margin-top: 5px;
+        display: block;
+        background: transparent !important;
     }
+    /* Right side (My messages) fix for blue background on audio */
+    .right audio { background: #0084ff !important; border-radius: 30px; }
+
+    /* Recording Timer Styling */
+    #recordingTimer { font-size: 14px; color: #fa3e3e; margin-left: 10px; display: none; font-weight: bold; }
 
     .toaster { position: fixed; top: 20px; right: 20px; background: #0084ff; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; display: none; animation: slideIn 0.3s ease; cursor: pointer; }
     @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
@@ -106,9 +114,18 @@
       <input type="file" id="mediaInput" style="display:none" accept="image/*,video/*" onchange="handleMediaUpload(this)">
       <button class="icon-btn secondary" onclick="document.getElementById('mediaInput').click()"><i class="bi bi-plus-circle-fill"></i></button>
       <button class="icon-btn secondary" id="emojiBtn"><i class="bi bi-emoji-smile"></i></button>
+      
+      <span id="recordingTimer">00:00</span>
+      
       <input id="messageInput" type="text" placeholder="Aa" onkeypress="if(event.key==='Enter') sendMessage()" />
-      <button class="icon-btn secondary" id="voiceBtn"><i class="bi bi-mic-fill"></i></button>
-      <button class="icon-btn" onclick="sendMessage()"><i class="bi bi-send-fill"></i></button>
+      
+      <button class="icon-btn secondary" id="voiceBtn">
+        <i class="bi bi-mic-fill"></i>
+      </button>
+
+      <button class="icon-btn" onclick="sendMessage()">
+        <i class="bi bi-send-fill"></i>
+      </button>
     </div>
   </div>
   <div id="emptyState" class="empty-state">
@@ -142,9 +159,33 @@
   document.getElementById('emojiBtn').onclick = () => { picker.style.display = (picker.style.display === 'block') ? 'none' : 'block'; };
   picker.addEventListener('emoji-click', event => { document.getElementById('messageInput').value += event.detail.unicode; picker.style.display = 'none'; });
 
+  // ==========================
+  // VOICE RECORDING LOGIC WITH TIMER
+  // ==========================
   let mediaRecorder;
   let audioChunks = [];
+  let timerInterval;
+  let seconds = 0;
   const voiceBtn = document.getElementById('voiceBtn');
+  const timerDisplay = document.getElementById('recordingTimer');
+
+  function startTimer() {
+    seconds = 0;
+    timerDisplay.style.display = "inline";
+    timerDisplay.innerText = "00:00";
+    timerInterval = setInterval(() => {
+      seconds++;
+      let mins = Math.floor(seconds / 60);
+      let secs = seconds % 60;
+      timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    timerDisplay.style.display = "none";
+  }
+
   voiceBtn.onclick = async () => {
     if (!mediaRecorder || mediaRecorder.state === "inactive") {
       try {
@@ -153,6 +194,7 @@
         audioChunks = [];
         mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
         mediaRecorder.onstop = async () => {
+          stopTimer();
           const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
           const formData = new FormData();
           formData.append("file", audioBlob, "voice_msg.webm");
@@ -164,11 +206,14 @@
           }
         };
         mediaRecorder.start();
+        startTimer();
         voiceBtn.classList.add('recording-active');
+        document.getElementById('messageInput').placeholder = "Recording...";
       } catch (err) { alert("Microphone access denied!"); }
     } else {
       mediaRecorder.stop();
       voiceBtn.classList.remove('recording-active');
+      document.getElementById('messageInput').placeholder = "Aa";
     }
   };
 
@@ -227,7 +272,6 @@
     renderSidebar();
     socket.emit("mark_read", { userEmail: loggedUser.email, otherEmail: email });
     fetch(`/api/chat/messages/${loggedUser.email}/${email}`).then(res => res.json()).then(msgs => {
-      // 🔥 History fix: Clear messages and re-append correctly
       msgs.forEach(m => appendMessage(m.message, m.senderEmail.toLowerCase() === loggedUser.email.toLowerCase() ? "right" : "left", m.fileUrl, m.messageType));
       scrollToBottom();
     });
@@ -275,7 +319,7 @@
     }
   });
 
-  // 🔥 FIXED: Audio logic aur Media Size
+  // 🔥 UPDATED: Audio Player vs Video Player Logic
   function appendMessage(text, side, fileUrl = null, type = 'text', tempId = null) {
     const div = document.createElement("div"); 
     div.className = `msg ${side}`;
@@ -286,8 +330,10 @@
         div.innerHTML = `<img src="${fileUrl}" class="chat-media" onclick="window.open('${fileUrl}')">`;
         addToGallery(fileUrl, 'image');
       } else if (type === 'video') {
-        // Voice note detection logic
-        if(fileUrl.includes('.webm') || fileUrl.includes('.mp3') || fileUrl.includes('.wav')) {
+        // 🔥 File extension aur name check for Audio
+        const isAudio = fileUrl.match(/\.(webm|mp3|wav|ogg|m4a)/i) || fileUrl.includes('voice_msg');
+        
+        if(isAudio) {
           div.innerHTML = `<audio src="${fileUrl}" controls></audio>`;
         } else {
           div.innerHTML = `<video src="${fileUrl}" controls class="chat-media"></video>`;
