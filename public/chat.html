@@ -11,6 +11,23 @@
     * { box-sizing: border-box; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
     :root { --vh: 1vh; }
     body { margin: 0; height: calc(var(--vh, 1vh) * 100); display: flex; background: #f0f2f5; color: #1c1e21; overflow: hidden; }
+
+    /* ========== MEDIA SIZE FIXES ========== */
+    .chat-media { 
+        max-width: 250px; 
+        max-height: 250px; 
+        border-radius: 12px; 
+        display: block; 
+        margin-top: 5px;
+        cursor: pointer;
+        object-fit: cover;
+    }
+    audio { 
+        max-width: 220px; 
+        height: 45px; 
+        margin-top: 5px;
+    }
+
     .toaster { position: fixed; top: 20px; right: 20px; background: #0084ff; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; display: none; animation: slideIn 0.3s ease; cursor: pointer; }
     @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
     emoji-picker { position: absolute; bottom: 80px; left: 20px; z-index: 500; display: none; height: 350px; }
@@ -37,7 +54,7 @@
     .chat-header { padding: 15px; border-bottom: 1px solid #ddd; display: flex; align-items: center; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     .back-btn { display: none; font-size: 1.5rem; margin-right: 10px; cursor: pointer; color: #0084ff; }
     .messages { flex: 1; padding: 20px; background: #f0f2f5; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
-    .msg { max-width: 65%; padding: 10px 15px; margin-bottom: 8px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
+    .msg { max-width: 70%; padding: 10px 15px; margin-bottom: 8px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
     .left { background: #e4e6eb; align-self: flex-start; color: #050505; }
     .right { background: #0084ff; align-self: flex-end; color: white; }
     .input-box { padding: 10px 15px; display: flex; align-items: center; border-top: 1px solid #ddd; background: white; }
@@ -166,21 +183,14 @@
     const onlineList = document.getElementById("onlineUsersList");
     const allList = document.getElementById("allUsersList");
     if (!onlineList || !allList) return;
-    
-    onlineList.innerHTML = ""; 
-    allList.innerHTML = "";
-
-    // 1. Sorting by last message time
+    onlineList.innerHTML = ""; allList.innerHTML = "";
     cachedUsers.sort((a, b) => new Date(b.lastMsgTime || 0) - new Date(a.lastMsgTime || 0));
-
     cachedUsers.forEach(user => {
       const email = user.email.toLowerCase();
       if (email === loggedUser.email.toLowerCase()) return; 
-
       const isOnline = currentOnlineEmails.includes(email);
       const name = user.firstName || email;
       const initial = name.charAt(0).toUpperCase();
-
       const userHtml = `
         <div class="chat-user" onclick="openChat('${email}', '${name}')">
           <div class="avatar-container">
@@ -193,22 +203,13 @@
           </div>
           <div class="badge" style="display:${unreadCount[email] > 0 ? 'inline-block' : 'none'}">${unreadCount[email] || 0}</div>
         </div>`;
-
-      // 2. 🔥 FIX: Logic to separate online/offline correctly
-      if (isOnline) {
-          onlineList.insertAdjacentHTML('beforeend', userHtml);
-      } else {
-          allList.insertAdjacentHTML('beforeend', userHtml);
-      }
+      if (isOnline) onlineList.insertAdjacentHTML('beforeend', userHtml);
+      else allList.insertAdjacentHTML('beforeend', userHtml);
     });
     document.getElementById("onlineLabel").style.display = onlineList.innerHTML === "" ? "none" : "block";
   }
 
-  socket.on("live_users_list", emails => { 
-    currentOnlineEmails = emails.map(e => e.toLowerCase()); 
-    renderSidebar(); 
-  });
-  
+  socket.on("live_users_list", emails => { currentOnlineEmails = emails.map(e => e.toLowerCase()); renderSidebar(); });
   socket.on("sidebar_update", fetchSidebarData);
 
   function openChat(email, name) {
@@ -226,6 +227,7 @@
     renderSidebar();
     socket.emit("mark_read", { userEmail: loggedUser.email, otherEmail: email });
     fetch(`/api/chat/messages/${loggedUser.email}/${email}`).then(res => res.json()).then(msgs => {
+      // 🔥 History fix: Clear messages and re-append correctly
       msgs.forEach(m => appendMessage(m.message, m.senderEmail.toLowerCase() === loggedUser.email.toLowerCase() ? "right" : "left", m.fileUrl, m.messageType));
       scrollToBottom();
     });
@@ -255,59 +257,47 @@
     } catch (err) { alert("Upload failed!"); }
   }
 
-socket.on("receive_message", data => {
+  socket.on("receive_message", data => {
     const senderEmail = data.senderEmail.toLowerCase();
-
     if (senderEmail === activeUser?.toLowerCase()) {
         appendMessage(data.message, "left", data.fileUrl, data.messageType);
         scrollToBottom();
     } else {
         unreadCount[senderEmail] = (unreadCount[senderEmail] || 0) + 1;
         renderSidebar();
-
-        // 🔥 FIX: Email se User ka Naam dhundna
         const userObj = cachedUsers.find(u => u.email.toLowerCase() === senderEmail);
         const displayName = userObj ? (userObj.firstName || senderEmail) : senderEmail;
-
         const toaster = document.getElementById("msgToaster");
-        
-        // Notification mein ab Email ki jagah Naam dikhega
         toaster.innerText = `New message from ${displayName}`; 
-        
         toaster.style.display = "block";
         toaster.onclick = () => openChat(senderEmail, displayName);
-        
         setTimeout(() => toaster.style.display = "none", 4000);
-
-        // Title Blinking Logic (Background tab ke liye)
-        if (document.hidden) {
-            const oldTitle = document.title;
-            const alertMsg = `📩 Message from ${displayName}`;
-            const blinkInterval = setInterval(() => { 
-                document.title = (document.title === alertMsg) ? oldTitle : alertMsg; 
-            }, 1000);
-            window.onfocus = () => { clearInterval(blinkInterval); document.title = oldTitle; };
-        }
     }
-});
+  });
 
+  // 🔥 FIXED: Audio logic aur Media Size
   function appendMessage(text, side, fileUrl = null, type = 'text', tempId = null) {
-    const div = document.createElement("div"); div.className = `msg ${side}`;
+    const div = document.createElement("div"); 
+    div.className = `msg ${side}`;
     if(tempId) div.id = `msg-${tempId}`;
+    
     if (fileUrl) {
       if (type === 'image') {
         div.innerHTML = `<img src="${fileUrl}" class="chat-media" onclick="window.open('${fileUrl}')">`;
         addToGallery(fileUrl, 'image');
       } else if (type === 'video') {
-        if(fileUrl.includes('.webm')) {
-          div.innerHTML = `<audio src="${fileUrl}" controls style="max-width: 200px;"></audio>`;
+        // Voice note detection logic
+        if(fileUrl.includes('.webm') || fileUrl.includes('.mp3') || fileUrl.includes('.wav')) {
+          div.innerHTML = `<audio src="${fileUrl}" controls></audio>`;
         } else {
           div.innerHTML = `<video src="${fileUrl}" controls class="chat-media"></video>`;
           addToGallery(fileUrl, 'video');
         }
       }
-      if(text) div.innerHTML += `<div>${text}</div>`;
-    } else { div.innerText = text; }
+      if(text) div.innerHTML += `<div style="margin-top:5px;">${text}</div>`;
+    } else { 
+        div.innerText = text; 
+    }
     document.getElementById("messages").appendChild(div);
   }
 
@@ -321,13 +311,6 @@ socket.on("receive_message", data => {
   function scrollToBottom() { const m = document.getElementById("messages"); m.scrollTop = m.scrollHeight; }
   function logout() { localStorage.clear(); location.href = "index.html"; }
   function closeChatMobile() { document.body.classList.remove('chat-active'); activeUser = null; }
-  
-  if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => {
-          document.body.style.height = window.visualViewport.height + 'px';
-          scrollToBottom();
-      });
-  }
   fetchSidebarData();
 </script>
 </body>

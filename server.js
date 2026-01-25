@@ -49,11 +49,13 @@ app.post("/api/chat/upload", upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     
-    // Voice notes aur media detection fix
+    // 🔥 Improved Audio/Video detection logic
     let type = 'image';
     const mime = req.file.mimetype;
     if (mime.startsWith('video')) type = 'video';
     if (mime.startsWith('audio') || req.file.originalname.endsWith('.webm')) type = 'video'; 
+    // Note: Use 'video' type in database to allow playback in HTML players, 
+    // but frontend logic will handle specific audio rendering.
 
     res.json({ url: req.file.path, type: type });
   } catch (err) {
@@ -86,7 +88,7 @@ const onlineUsers = new Map();
 io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
 
-  socket.on("join", async ({ email, view }) => {
+  socket.on("join", async ({ email }) => {
     if (!email) return;
     const userEmail = email.toLowerCase();
 
@@ -99,29 +101,16 @@ io.on("connection", (socket) => {
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
     
     try {
-      // Delivered status update (sirf online hone par)
+      // Delivered tabhi hoga jab user online hai
       await Message.updateMany(
         { receiverEmail: userEmail, delivered: false },
         { delivered: true }
       );
 
-      // Pending messages sirf unhe bhejo jo delivered nahi huye the
-      const pendingMessages = await Message.find({
-        receiverEmail: userEmail,
-        read: false, // Sirf unread messages ko refresh par notify karo
-      }).sort({ createdAt: 1 });
-
-      for (let msg of pendingMessages) {
-        socket.emit("receive_message", {
-          senderEmail: msg.senderEmail,
-          message: msg.message,
-          fileUrl: msg.fileUrl,
-          messageType: msg.messageType,
-          time: msg.createdAt,
-        });
-      }
+      // 🔥 Note: Pending messages emit karna yahan se band kar diya hai 
+      // kyunki chat history API frontend par history refresh karti hai.
+      // Isse duplicate messages ki dikkat nahi aayegi.
       
-      // Sidebar refresh logic
       io.emit("sidebar_update"); 
     } catch (err) {
       console.error("❌ Join Error:", err);
@@ -172,7 +161,7 @@ io.on("connection", (socket) => {
         await msg.save();
       }
       
-      // Notify sidebar update for both (last msg & badges)
+      // Sidebar update for both
       onlineUsers.get(sEmail)?.forEach(id => io.to(id).emit("sidebar_update"));
       if (onlineUsers.has(rEmail)) {
           onlineUsers.get(rEmail).forEach(id => io.to(id).emit("sidebar_update"));
@@ -183,7 +172,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // MARK READ logic (Frontend se trigger hoga jab chat khulegi)
+  // MARK READ logic
   socket.on("mark_read", async ({ userEmail, otherEmail }) => {
     try {
       if(!userEmail || !otherEmail) return;
@@ -195,7 +184,7 @@ io.on("connection", (socket) => {
         { read: true, delivered: true }
       );
 
-      // Dono ko notify karo taaki badge hat jaye
+      // Dono side sidebar/unread badges update karo
       onlineUsers.get(me)?.forEach(id => io.to(id).emit("sidebar_update"));
       onlineUsers.get(other)?.forEach(id => io.to(id).emit("sidebar_update"));
     } catch (err) {
