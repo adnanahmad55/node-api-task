@@ -43,18 +43,22 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
 // =====================
-// MEDIA UPLOAD ROUTE
+// 🔥 FIXED: MEDIA UPLOAD ROUTE (STRICT AUDIO DETECTION)
 // =====================
 app.post("/api/chat/upload", upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     
-    // Improved Audio/Video detection logic for Cloudinary uploads
     let type = 'image';
     const mime = req.file.mimetype;
-    if (mime.startsWith('video')) type = 'video';
-    if (mime.startsWith('audio') || req.file.originalname.endsWith('.webm')) type = 'video'; 
-    // Logic: HTML5 video players can play .webm audio, handled as video type in DB
+    const fileName = req.file.originalname.toLowerCase();
+
+    // STRICT CHECK: Audio ko strictly 'audio' label karein
+    if (mime.startsWith('audio') || fileName.endsWith('.webm') || fileName.includes('voice_msg')) {
+        type = 'audio';
+    } else if (mime.startsWith('video')) {
+        type = 'video';
+    }
 
     res.json({ url: req.file.path, type: type });
   } catch (err) {
@@ -100,15 +104,13 @@ io.on("connection", (socket) => {
     io.emit("live_users_list", Array.from(onlineUsers.keys()));
     
     try {
-      // Mark messages as delivered when user comes online
+      // Mark messages as delivered
       await Message.updateMany(
         { receiverEmail: userEmail, delivered: false },
         { delivered: true }
       );
 
-      // Note: Emitting pending messages is disabled here to prevent history duplicates.
-      // The frontend chat history API handles fetching all previous logs.
-      
+      // Duplicate history se bachne ke liye pending messages emit nahi honge
       io.emit("sidebar_update"); 
     } catch (err) {
       console.error("❌ Join Error:", err);
@@ -139,7 +141,7 @@ io.on("connection", (socket) => {
         receiverEmail: rEmail,
         message: message || "",
         fileUrl: fileUrl || null,
-        messageType: messageType || 'text',
+        messageType: messageType || 'text', // Frontend se 'audio' aayega ab
         delivered: false,
         read: false,
       });
@@ -159,7 +161,7 @@ io.on("connection", (socket) => {
         await msg.save();
       }
       
-      // Update sidebar for both sender (last msg) and receiver (badges)
+      // Sync sidebar real-time
       onlineUsers.get(sEmail)?.forEach(id => io.to(id).emit("sidebar_update"));
       if (onlineUsers.has(rEmail)) {
           onlineUsers.get(rEmail).forEach(id => io.to(id).emit("sidebar_update"));
@@ -170,7 +172,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // MARK READ logic - Triggered when user opens a chat
+  // MARK READ logic
   socket.on("mark_read", async ({ userEmail, otherEmail }) => {
     try {
       if(!userEmail || !otherEmail) return;
@@ -182,7 +184,6 @@ io.on("connection", (socket) => {
         { read: true, delivered: true }
       );
 
-      // Notify both clients to clear unread UI badges
       onlineUsers.get(me)?.forEach(id => io.to(id).emit("sidebar_update"));
       onlineUsers.get(other)?.forEach(id => io.to(id).emit("sidebar_update"));
     } catch (err) {
