@@ -12,7 +12,7 @@
     :root { --vh: 1vh; }
     body { margin: 0; height: calc(var(--vh, 1vh) * 100); display: flex; background: #f0f2f5; color: #1c1e21; overflow: hidden; }
 
-    /* ========== MEDIA SIZE FIXES ========== */
+    /* ========== MEDIA SIZE & AUDIO FIXES ========== */
     .chat-media { 
         max-width: 250px; 
         max-height: 250px; 
@@ -22,16 +22,21 @@
         cursor: pointer;
         object-fit: cover;
     }
-    /* Audio player logic to remove big blue background */
+
+    /* 🔥 Audio player logic to remove big blue background */
     .msg audio { 
-        max-width: 220px; 
-        height: 45px; 
-        margin-top: 5px;
+        max-width: 210px; 
+        height: 40px; 
         display: block;
+        margin-top: 5px;
+        background: transparent !important; 
+    }
+
+    /* Right side (My messages) blue bubble ke andar audio controls fix */
+    .right audio { 
+        filter: invert(100%); 
         background: transparent !important;
     }
-    /* Right side (My messages) fix for blue background on audio */
-    .right audio { background: #0084ff !important; border-radius: 30px; }
 
     /* Recording Timer Styling */
     #recordingTimer { font-size: 14px; color: #fa3e3e; margin-left: 10px; display: none; font-weight: bold; }
@@ -41,6 +46,7 @@
     emoji-picker { position: absolute; bottom: 80px; left: 20px; z-index: 500; display: none; height: 350px; }
     .recording-active { color: #fa3e3e !important; animation: blink 1s infinite; }
     @keyframes blink { 50% { opacity: 0.5; } }
+    
     .sidebar { width: 320px; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: 0.3s; z-index: 10; }
     .sidebar-header { padding: 20px 15px; background: #0084ff; color: white; font-size: 1.2rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
     .user-search { padding: 10px; background: #f0f2f5; }
@@ -246,7 +252,7 @@
             <div class="name">${name}</div>
             <div class="last-msg">${user.lastMessage || "No messages yet"}</div>
           </div>
-          <div class="badge" style="display:${unreadCount[email] > 0 ? 'inline-block' : 'none'}">${unreadCount[email] || 0}</div>
+          <div id="badge-${email}" class="badge" style="display:${unreadCount[email] > 0 ? 'inline-block' : 'none'}">${unreadCount[email] || 0}</div>
         </div>`;
       if (isOnline) onlineList.insertAdjacentHTML('beforeend', userHtml);
       else allList.insertAdjacentHTML('beforeend', userHtml);
@@ -319,7 +325,7 @@
     }
   });
 
-  // 🔥 UPDATED: Audio Player vs Video Player Logic
+  // 🔥 FIXED: Tight Audio vs Video player logic
   function appendMessage(text, side, fileUrl = null, type = 'text', tempId = null) {
     const div = document.createElement("div"); 
     div.className = `msg ${side}`;
@@ -330,11 +336,11 @@
         div.innerHTML = `<img src="${fileUrl}" class="chat-media" onclick="window.open('${fileUrl}')">`;
         addToGallery(fileUrl, 'image');
       } else if (type === 'video') {
-        // 🔥 File extension aur name check for Audio
-        const isAudio = fileUrl.match(/\.(webm|mp3|wav|ogg|m4a)/i) || fileUrl.includes('voice_msg');
+        // Strict voice message check
+        const isVoice = fileUrl.includes('voice_msg') || fileUrl.match(/\.(webm|mp3|wav|m4a|ogg)$/i);
         
-        if(isAudio) {
-          div.innerHTML = `<audio src="${fileUrl}" controls></audio>`;
+        if (isVoice) {
+          div.innerHTML = `<audio src="${fileUrl}" controls preload="metadata"></audio>`;
         } else {
           div.innerHTML = `<video src="${fileUrl}" controls class="chat-media"></video>`;
           addToGallery(fileUrl, 'video');
