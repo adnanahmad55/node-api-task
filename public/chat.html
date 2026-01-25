@@ -23,23 +23,24 @@
         object-fit: cover;
     }
 
-    /* 🔥 Audio player logic to remove ALL background boxes */
+    /* 🔥 Audio player logic to remove black/blue video background */
     .msg audio { 
         width: 210px; 
-        height: 40px; 
+        height: 45px; 
         display: block;
         margin-top: 5px;
         background: transparent !important; 
+        border: none !important;
+        outline: none !important;
     }
 
-    /* Right side (My messages) blue bubble ke andar audio controls fix */
-    /* Filter invert controls ko white kar deta hai taaki blue par dikhein */
+    /* Right side (My messages) - White controls on blue background */
     .right audio { 
         filter: invert(100%) hue-rotate(180deg); 
         background: transparent !important;
     }
 
-    /* Left side (Receiver) fix */
+    /* Left side (Receiver) - Normal controls */
     .left audio {
         background: transparent !important;
     }
@@ -331,29 +332,31 @@
     }
   });
 
-  // 🔥 FIXED: Strict Audio vs Video player selection
+  // 🔥 FINAL FIXED: Strict Audio vs Video player selection
   function appendMessage(text, side, fileUrl = null, type = 'text', tempId = null) {
     const div = document.createElement("div"); 
     div.className = `msg ${side}`;
     if(tempId) div.id = `msg-${tempId}`;
     
     if (fileUrl) {
+      const urlLower = fileUrl.toLowerCase();
+      // Audio detection fix: strict check for webm, mp3 and voice_msg keyword
+      const isVoice = urlLower.includes('voice_msg') || urlLower.includes('webm') || 
+                      urlLower.match(/\.(mp3|wav|m4a|ogg)$/i) || type === 'audio';
+      
       if (type === 'image') {
         div.innerHTML = `<img src="${fileUrl}" class="chat-media" onclick="window.open('${fileUrl}')">`;
         addToGallery(fileUrl, 'image');
-      } else if (type === 'video') {
-        // Strict voice message check - uses audio tag for voice
-        const isVoice = fileUrl.includes('voice_msg') || fileUrl.match(/\.(webm|mp3|wav|m4a|ogg)$/i);
-        
-        if (isVoice) {
-          // Removes video player UI for voice messages
-          div.innerHTML = `<audio src="${fileUrl}" controls preload="metadata"></audio>`;
-        } else {
-          // Keeps video player for real videos
-          div.innerHTML = `<video src="${fileUrl}" controls class="chat-media"></video>`;
-          addToGallery(fileUrl, 'video');
-        }
+      } 
+      else if (isVoice) {
+        // 🔥 Strictly renders audio player WITHOUT video container
+        div.innerHTML = `<audio src="${fileUrl}" controls preload="metadata"></audio>`;
+      } 
+      else if (type === 'video') {
+        div.innerHTML = `<video src="${fileUrl}" controls class="chat-media"></video>`;
+        addToGallery(fileUrl, 'video');
       }
+      
       if(text) {
           const textDiv = document.createElement("div");
           textDiv.style.marginTop = "5px";
