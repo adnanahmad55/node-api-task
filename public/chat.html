@@ -24,8 +24,9 @@
     .upload-percentage { font-size: 11px; margin-left: 8px; font-weight: bold; }
 
     /* 🔥 TASK 2 POPUP STYLING */
-    #allUsersModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 400px; max-height: 80vh; overflow-y: auto; border-radius: 12px; box-shadow: 0 0 30px rgba(0,0,0,0.3); z-index: 2000; padding: 20px; }
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1999; }
+    #allUsersModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 420px; max-height: 80vh; overflow-y: auto; border-radius: 15px; box-shadow: 0 0 40px rgba(0,0,0,0.4); z-index: 2000; padding: 20px; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1999; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px; }
 
     #recordingTimer { font-size: 14px; color: #fa3e3e; margin-left: 10px; display: none; font-weight: bold; }
     .toaster { position: fixed; top: 20px; right: 20px; background: #0084ff; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; display: none; animation: slideIn 0.3s ease; cursor: pointer; }
@@ -78,8 +79,8 @@
 
 <div id="modalOverlay" class="modal-overlay" onclick="closeModal()"></div>
 <div id="allUsersModal">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
-        <h5 style="margin:0;">Task 2: Registered Users</h5>
+    <div class="modal-header">
+        <h5 style="margin:0;"><i class="bi bi-people-fill me-2"></i>All Registered Users</h5>
         <i class="bi bi-x-lg" style="cursor:pointer" onclick="closeModal()"></i>
     </div>
     <div id="modalUsersList"></div>
@@ -89,7 +90,7 @@
   <div class="sidebar-header">
     <div>
         <i class="bi bi-person-circle me-2"></i>
-        <span id="loggedInUserName">User</span>
+        <span id="loggedInUserName">Loading...</span>
     </div>
     <i class="bi bi-box-arrow-right" style="cursor:pointer" onclick="logout()"></i>
   </div>
@@ -99,8 +100,8 @@
   </div>
   
   <div class="p-2">
-      <button onclick="showAllUsersPopup()" class="btn btn-primary btn-sm w-100" style="border-radius:20px; background:#0084ff; color:white; border:none; padding:8px;">
-        <i class="bi bi-people-fill me-2"></i>See All Users List (Task 2)
+      <button onclick="showAllUsersPopup()" class="btn btn-primary btn-sm w-100" style="border-radius:20px; background:#0084ff; color:white; border:none; padding:8px; font-weight:600;">
+        <i class="bi bi-shield-check me-2"></i>Task 2: See All Users (Public)
       </button>
   </div>
 
@@ -138,7 +139,7 @@
 </div>
 
 <script>
-  // 🔥 Security & Username Display
+  // 🔥 Security Check & Name Display
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
   if (!loggedUser) {
       window.location.href = "index.html"; 
@@ -151,29 +152,39 @@
 
   let activeUser = null; let unreadCount = {}; let currentOnlineEmails = []; let cachedUsers = [];
 
-  // ========== TASK 2 POPUP LOGIC ==========
-  function showAllUsersPopup() {
+  // ========== TASK 2 POPUP LOGIC (PUBLIC ROUTE) ==========
+  async function showAllUsersPopup() {
     document.getElementById('allUsersModal').style.display = 'block';
     document.getElementById('modalOverlay').style.display = 'block';
     const list = document.getElementById('modalUsersList');
-    list.innerHTML = "";
+    list.innerHTML = `<div class="p-3 text-center text-muted">Fetching public directory...</div>`;
     
-    // Map current cached users with real-time socket status
-    cachedUsers.forEach(user => {
-        const email = user.email.toLowerCase();
-        const isOnline = currentOnlineEmails.includes(email);
-        list.innerHTML += `
-            <div style="display:flex; align-items:center; padding:12px; border-bottom:1px solid #eee;">
-                <div class="avatar" style="width:35px; height:35px; font-size:0.9rem; margin-right:12px;">${user.firstName[0].toUpperCase()}</div>
-                <div style="flex:1;">
-                    <div style="font-weight:600; font-size:0.9rem;">${user.firstName}</div>
-                    <div style="font-size:0.75rem; color:#888;">${email}</div>
-                </div>
-                <span style="font-size:0.75rem; color:${isOnline ? '#31a24c' : '#8a8d91'}; font-weight:bold;">
-                    ${isOnline ? '● Online' : 'Offline'}
-                </span>
-            </div>`;
-    });
+    try {
+        // 🔥 Use the naya public route
+        const res = await fetch('/api/chat/all-registered');
+        const users = await res.json();
+        
+        list.innerHTML = "";
+        users.forEach(user => {
+            const email = user.email.toLowerCase();
+            const isOnline = currentOnlineEmails.includes(email);
+            list.innerHTML += `
+                <div style="display:flex; align-items:center; padding:12px; border-bottom:1px solid #eee;">
+                    <div class="avatar" style="width:38px; height:38px; font-size:1rem; margin-right:12px; background:#e4e6eb;">
+                        ${user.firstName[0].toUpperCase()}
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:0.95rem;">${user.firstName} ${user.lastName || ''}</div>
+                        <div style="font-size:0.75rem; color:#888;">${email}</div>
+                    </div>
+                    <span style="font-size:0.75rem; color:${isOnline ? '#31a24c' : '#8a8d91'}; font-weight:bold;">
+                        ${isOnline ? '● Online' : 'Offline'}
+                    </span>
+                </div>`;
+        });
+    } catch (err) {
+        list.innerHTML = `<div class="p-3 text-danger">Failed to load public list.</div>`;
+    }
   }
 
   function closeModal() {
@@ -206,14 +217,17 @@
         </div>
         <div class="progress-container"><div id="bar-${tempId}" class="progress-bar-fill"></div></div>`;
     appendMessage(loadingHtml, "right", null, "text", tempId);
+    
     const formData = new FormData(); formData.append("file", file);
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/chat/upload", true);
     xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
             const percent = Math.round((e.loaded / e.total) * 100);
-            document.getElementById(`bar-${tempId}`).style.width = percent + "%";
-            document.getElementById(`percent-${tempId}`).innerText = percent + "%";
+            const bar = document.getElementById(`bar-${tempId}`);
+            if(bar) bar.style.width = percent + "%";
+            const text = document.getElementById(`percent-${tempId}`);
+            if(text) text.innerText = percent + "%";
         }
     };
     xhr.onload = function() {

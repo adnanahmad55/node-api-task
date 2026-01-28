@@ -4,22 +4,35 @@ const Message = require("../models/Message");
 const User = require("../models/User");
 
 /**
- * 🔹 1. GET ALL USERS (Task 2 & Sidebar)
- * Is route se aapko saare users milenge last message aur unread count ke saath.
+ * 🔹 1. GET ALL REGISTERED USERS (Public - No Login Required)
+ * Task 2 ke liye: Bina login kiye saare users yahan se dikhenge.
+ */
+router.get("/all-registered", async (req, res) => {
+  try {
+    // Saare users fetch karein firstName, lastName aur email ke saath
+    const users = await User.find({})
+                            .select("email firstName lastName createdAt")
+                            .sort({ createdAt: -1 }); // Naye users pehle dikhenge
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Public data fetch failed: " + err.message });
+  }
+});
+
+/**
+ * 🔹 2. GET CHAT SIDEBAR USERS (Requires Login Email)
+ * Is route mein logged-in user ko exclude kiya jata hai ($ne).
  */
 router.get("/users/:email", async (req, res) => {
   try {
     const loggedInEmail = req.params.email.toLowerCase();
 
-    // 1. Saare users fetch karo (lastName bhi add kiya hai taaki Task 2 popup mein poora naam dikhe)
     const users = await User.find({ email: { $ne: loggedInEmail } })
                             .select("email firstName lastName");
 
-    // 2. Har user ke liye last message aur unread messages dhundo
     const usersWithLastMsg = await Promise.all(users.map(async (user) => {
       const userEmail = user.email.toLowerCase();
 
-      // Sabse naya message fetch karna
       const lastMsg = await Message.findOne({
         $or: [
           { senderEmail: loggedInEmail, receiverEmail: userEmail },
@@ -27,7 +40,6 @@ router.get("/users/:email", async (req, res) => {
         ]
       }).sort({ createdAt: -1 });
 
-      // Kitne messages abhi tak read nahi huye hain (Unread Badge ke liye)
       const unread = await Message.countDocuments({
         senderEmail: userEmail,
         receiverEmail: loggedInEmail,
@@ -36,7 +48,6 @@ router.get("/users/:email", async (req, res) => {
 
       return {
         ...user._doc,
-        // Frontend Task 2 mein dikhane ke liye extra details
         lastMessage: lastMsg ? (lastMsg.messageType === 'text' ? lastMsg.message : `[${lastMsg.messageType}]`) : "No messages yet",
         lastMsgTime: lastMsg ? lastMsg.createdAt : null,
         unreadCount: unread 
@@ -50,8 +61,7 @@ router.get("/users/:email", async (req, res) => {
 });
 
 /**
- * 🔹 2. GET LOGGED IN USER PROFILE
- * Login ke baad agar username nahi dikh raha, toh is route se frontend data fetch karega.
+ * 🔹 3. GET LOGGED IN USER PROFILE
  */
 router.get("/profile/:email", async (req, res) => {
   try {
@@ -64,8 +74,7 @@ router.get("/profile/:email", async (req, res) => {
 });
 
 /**
- * 🔹 3. CHAT HISTORY
- * Dono users ke beech ki chat history laane ke liye.
+ * 🔹 4. CHAT HISTORY
  */
 router.get("/messages/:me/:other", async (req, res) => {
   try {
@@ -73,7 +82,6 @@ router.get("/messages/:me/:other", async (req, res) => {
     const myEmail = me.toLowerCase();
     const otherEmail = other.toLowerCase();
 
-    // Sender aur Receiver dono ke messages fetch honge
     const messages = await Message.find({
       $or: [
         { senderEmail: myEmail, receiverEmail: otherEmail },
