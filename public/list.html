@@ -5,6 +5,7 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+
   <style>
     .table-container { width: 90%; margin: 30px auto; max-width: 1000px; }
     table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
@@ -13,10 +14,18 @@
     tr:hover { background-color: #f9f9f9; }
     .nav { margin-bottom: 20px; text-align: right; }
     .nav a { background: #fa3e3e; color: white; padding: 8px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; }
-    .toaster { position: fixed; top: 20px; right: 20px; background: #0084ff; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; display: none; cursor: pointer; font-weight: bold; animation: slideIn 0.3s ease; }
+
+    /* Toaster Notification Styling */
+    .toaster {
+        position: fixed; top: 20px; right: 20px; background: #0084ff; color: white;
+        padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 1000; display: none; cursor: pointer; font-weight: bold;
+        animation: slideIn 0.3s ease;
+    }
     @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
   </style>
 </head>
+
 <body>
 
 <div id="msgToaster" class="toaster"></div>
@@ -50,28 +59,32 @@
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
   let cachedUsersForToaster = [];
 
-  // 🔥 Task 2 Fix: Removed the mandatory redirect
+  // 🔥 Authentication & Socket Logic
   if (loggedUser && loggedUser.email) {
+      // Show private navigation buttons
       document.getElementById("chatLink").style.display = "inline-block";
       document.getElementById("logoutBtn").style.display = "inline-block";
 
       const socket = io("https://node-api-task-nl8e.onrender.com", { transports: ["websocket"] });
       socket.emit("join", { email: loggedUser.email, view: "list" });
 
+      // Handle real-time notifications
       socket.on("receive_message", data => {
           const senderEmail = data.senderEmail.toLowerCase();
           const userObj = cachedUsersForToaster.find(u => u.email.toLowerCase() === senderEmail);
           const displayName = userObj ? `${userObj.firstName} ${userObj.lastName || ''}` : senderEmail;
+          
           const toaster = document.getElementById("msgToaster");
           toaster.innerText = `📩 ${displayName}: ${data.message || 'Media Received'}`;
           toaster.style.display = "block";
+          
           toaster.onclick = () => window.location.href = `chat.html?email=${encodeURIComponent(senderEmail)}`;
           setTimeout(() => { toaster.style.display = "none"; }, 5000);
       });
   }
 
   $(document).ready(function () {
-    // 🔥 Updated API URL to use the verified public endpoint
+    // 🔥 Fetching directory from public endpoint
     const publicApiUrl = "https://node-api-task-nl8e.onrender.com/api/chat/all-registered";
 
     $.get(publicApiUrl, function (data) {
