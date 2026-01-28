@@ -7,67 +7,71 @@
   <style>
     body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 40px 20px; font-family: 'Segoe UI', sans-serif; }
     .directory-container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
-    .user-table-card { border: 1px solid #eee; border-radius: 12px; overflow: hidden; margin-top: 20px; }
-    .table thead { background-color: #0084ff; color: white; }
-    .avatar-circle { width: 35px; height: 35px; background: #764ba2; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; }
+    .avatar-circle { width: 35px; height: 35px; background: #0084ff; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="directory-container">
     <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
-        <h2 class="text-dark m-0 fw-bold">Registered User Directory</h2>
-        <a href="index.html" class="btn btn-primary shadow-sm">Go to Login</a>
+        <h2 class="text-dark m-0 fw-bold">Registered User Directory (Task 2)</h2>
+        <a href="index.html" class="btn btn-outline-primary shadow-sm">Go to Login</a>
     </div>
     
-    <div class="user-table-card">
-        <table class="table table-hover mb-0">
-            <thead>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-primary">
                 <tr>
                     <th>#</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Joined Date</th>
+                    <th>Full Name</th>
+                    <th>Email Address</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody id="publicUserList">
                 <tr>
-                    <td colspan="4" class="text-center py-4">
+                    <td colspan="4" class="text-center py-5">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2 text-muted">Loading registered users...</p>
+                        <p class="mt-2 text-muted">Checking API connection...</p>
                     </td>
                 </tr>
             </tbody>
         </table>
     </div>
+    <div id="debugInfo" style="font-size: 10px; color: #ccc; margin-top: 20px;"></div>
   </div>
 
   <script>
     async function loadPublicUsers() {
         const listBody = document.getElementById('publicUserList');
+        const debug = document.getElementById('debugInfo');
+        
+        // 🔥 ABSOLUTE URL use kar rahe hain taaki koi confusion na rahe
+        const apiUrl = "https://node-api-task-nl8e.onrender.com/api/chat/all-registered";
+        
         try {
-            // 🔥 URL verify karein: Aapke backend route se matching
-            const res = await fetch('/api/chat/all-registered');
-            const users = await res.json();
+            debug.innerText = "Attempting to fetch from: " + apiUrl;
+            const res = await fetch(apiUrl);
             
-            console.log("JSON Data:", users); // Browser Console (F12) mein check karein
+            if (!res.ok) throw new Error("Server responded with status: " + res.status);
+            
+            const users = await res.json();
+            console.log("Success! Users found:", users);
 
             if (!Array.isArray(users)) {
-                listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Invalid API Response</td></tr>`;
+                listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error: API didn't return a list.</td></tr>`;
+                return;
+            }
+
+            if (users.length === 0) {
+                listBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted">No users in database.</td></tr>`;
                 return;
             }
 
             listBody.innerHTML = "";
-            if (users.length === 0) {
-                listBody.innerHTML = `<tr><td colspan="4" class="text-center py-4">No users registered yet.</td></tr>`;
-                return;
-            }
-
-            // Database data ko table mein map karein
             users.forEach((user, index) => {
-                const fullName = `${user.firstName || ''} ${user.lastName || ''}`;
-                const regDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A';
                 const initial = user.firstName ? user.firstName[0].toUpperCase() : '?';
-
+                const fullName = (user.firstName || '') + " " + (user.lastName || '');
+                
                 listBody.innerHTML += `
                     <tr>
                         <td>${index + 1}</td>
@@ -77,16 +81,26 @@
                                 <span>${fullName}</span>
                             </div>
                         </td>
-                        <td><span class="text-muted">${user.email}</span></td>
-                        <td><span class="badge bg-light text-dark border">${regDate}</span></td>
+                        <td><span class="text-primary">${user.email}</span></td>
+                        <td><span class="badge bg-success">Registered</span></td>
                     </tr>`;
             });
+            debug.innerText = "Fetch complete. Loaded " + users.length + " users.";
+
         } catch (err) {
-            console.error("Fetch Error:", err);
-            listBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Error: Failed to connect to server.</td></tr>`;
+            console.error("Critical Fetch Error:", err);
+            listBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center py-4">
+                        <div class="alert alert-danger mb-0">
+                            <strong>Fetch Failed:</strong> ${err.message}<br>
+                            <small>Check if your Render server is sleeping.</small>
+                        </div>
+                    </td>
+                </tr>`;
+            debug.innerText = "Error details: " + err.stack;
         }
     }
-    // Page load par function call
     loadPublicUsers();
   </script>
 </body>
