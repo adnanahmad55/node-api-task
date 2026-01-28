@@ -12,18 +12,48 @@
     :root { --vh: 1vh; }
     body { margin: 0; height: calc(var(--vh, 1vh) * 100); display: flex; background: #f0f2f5; color: #1c1e21; overflow: hidden; }
 
-    /* ========== MEDIA & AUDIO FIXES ========== */
-    .chat-media { max-width: 250px; max-height: 250px; border-radius: 12px; display: block; margin-top: 5px; cursor: pointer; object-fit: contain; }
-    .msg audio { width: 210px; height: 45px; display: block; margin-top: 5px; background: transparent !important; }
+    /* ========== MEDIA SIZE & AUDIO FIXES ========== */
+    .chat-media { 
+        max-width: 250px; 
+        max-height: 250px; 
+        border-radius: 12px; 
+        display: block; 
+        margin-top: 5px;
+        cursor: pointer;
+        object-fit: contain;
+    }
+
+    .msg audio { 
+        width: 210px; 
+        height: 45px; 
+        display: block;
+        margin-top: 5px;
+        background: transparent !important; 
+    }
+
     .right audio { filter: invert(100%) hue-rotate(180deg); }
 
-    /* 🔥 LOADING & DRAG OVER STYLING */
+    /* 🔥 PROGRESS BAR & DRAG STYLING */
     .messages.drag-over { background-color: #e3f2fd; border: 2px dashed #0084ff; transition: 0.2s; }
-    .msg.uploading { opacity: 0.6; font-style: italic; }
-    .spinner-border { width: 1rem; height: 1rem; margin-right: 5px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; display: inline-block; animation: spinner .75s linear infinite; }
-    @keyframes spinner { to { transform: rotate(360deg); } }
+    
+    .progress-container {
+        width: 100%;
+        background-color: rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        height: 8px;
+        margin-top: 8px;
+        overflow: hidden;
+    }
+    .progress-bar-fill {
+        height: 100%;
+        width: 0%;
+        background-color: #fff;
+        transition: width 0.2s ease;
+    }
+    .upload-percentage { font-size: 11px; margin-left: 8px; font-weight: bold; }
 
     #recordingTimer { font-size: 14px; color: #fa3e3e; margin-left: 10px; display: none; font-weight: bold; }
+
     .toaster { position: fixed; top: 20px; right: 20px; background: #0084ff; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; display: none; animation: slideIn 0.3s ease; cursor: pointer; }
     @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
     emoji-picker { position: absolute; bottom: 80px; left: 20px; z-index: 500; display: none; height: 350px; }
@@ -55,10 +85,12 @@
     .msg { max-width: 75%; padding: 10px 15px; margin-bottom: 8px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
     .left { background: #e4e6eb; align-self: flex-start; color: #050505; }
     .right { background: #0084ff; align-self: flex-end; color: white; }
+    
     .input-box { padding: 10px 15px; display: flex; align-items: center; border-top: 1px solid #ddd; background: white; }
     .input-box input[type="text"] { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ddd; outline: none; background: #f0f2f5; font-size: 16px; margin: 0 10px; }
     .icon-btn { background: none; border: none; color: #0084ff; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; transition: transform 0.1s; }
     .icon-btn.secondary { color: #8a8d91; }
+    
     @media (max-width: 768px) {
       .sidebar { width: 100%; position: absolute; height: 100%; z-index: 10; left: 0; top: 0; }
       .chat-area { width: 100%; }
@@ -125,31 +157,57 @@
       if (e.dataTransfer.files.length > 0) handleMediaUpload(e.dataTransfer.files[0]);
   };
 
-  // 🔥 UPDATED MEDIA UPLOAD (WITH LOADING)
+  // 🔥 UPDATED MEDIA UPLOAD (WITH PROGRESS BAR)
   async function handleMediaUpload(fileOrInput) {
     const file = fileOrInput.files ? fileOrInput.files[0] : fileOrInput;
     if (!file || !activeUser) return;
 
     const tempId = "upload-" + Date.now();
-    // Show Loading Placeholder
-    appendMessage(`<div class="spinner-border"></div> Uploading ${file.name}...`, "right", null, "text", tempId);
-    document.getElementById(`msg-${tempId}`).classList.add('uploading');
+    
+    // Progress HTML
+    const loadingHtml = `
+        <div class="d-flex align-items-center">
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            <span>Uploading...</span>
+            <span id="percent-${tempId}" class="upload-percentage">0%</span>
+        </div>
+        <div class="progress-container"><div id="bar-${tempId}" class="progress-bar-fill"></div></div>
+    `;
+    
+    appendMessage(loadingHtml, "right", null, "text", tempId);
+    const msgElement = document.getElementById(`msg-${tempId}`);
 
-    const formData = new FormData(); formData.append("file", file);
-    try {
-      const res = await fetch("/api/chat/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (data.url) {
-        const secureUrl = data.url.replace("http://", "https://");
-        document.getElementById(`msg-${tempId}`)?.remove(); // Cleanup loading
-        socket.emit("send_message", { senderEmail: loggedUser.email, receiverEmail: activeUser, message: "", fileUrl: secureUrl, messageType: data.type });
-        appendMessage("", "right", secureUrl, data.type); 
-        scrollToBottom();
-      }
-    } catch (err) { 
-        const el = document.getElementById(`msg-${tempId}`);
-        if(el) el.innerHTML = "❌ Upload Failed";
-    }
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/chat/upload", true);
+
+    // 🔥 REAL-TIME PROGRESS TRACKING
+    xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            const bar = document.getElementById(`bar-${tempId}`);
+            const text = document.getElementById(`percent-${tempId}`);
+            if (bar) bar.style.width = percent + "%";
+            if (text) text.innerText = percent + "%";
+        }
+    };
+
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            const data = JSON.parse(xhr.responseText);
+            if (data.url) {
+                const secureUrl = data.url.replace("http://", "https://");
+                msgElement.remove(); // Remove loading bubble
+                socket.emit("send_message", { senderEmail: loggedUser.email, receiverEmail: activeUser, message: "", fileUrl: secureUrl, messageType: data.type });
+                appendMessage("", "right", secureUrl, data.type);
+                scrollToBottom();
+            }
+        } else { msgElement.innerHTML = "❌ Upload Failed"; }
+    };
+
+    xhr.send(formData);
   }
 
   // ========== CORE UI LOGIC ==========
