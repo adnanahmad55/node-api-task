@@ -5,7 +5,6 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-
   <style>
     .table-container { width: 90%; margin: 30px auto; max-width: 1000px; }
     table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
@@ -14,26 +13,19 @@
     tr:hover { background-color: #f9f9f9; }
     .nav { margin-bottom: 20px; text-align: right; }
     .nav a { background: #fa3e3e; color: white; padding: 8px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; }
-
-    /* 🔥 Toaster Notification Styling */
-    .toaster {
-        position: fixed; top: 20px; right: 20px; background: #0084ff; color: white;
-        padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        z-index: 1000; display: none; cursor: pointer; font-weight: bold;
-        animation: slideIn 0.3s ease;
-    }
+    .toaster { position: fixed; top: 20px; right: 20px; background: #0084ff; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; display: none; cursor: pointer; font-weight: bold; animation: slideIn 0.3s ease; }
     @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
   </style>
 </head>
-
 <body>
 
 <div id="msgToaster" class="toaster"></div>
 
 <div class="table-container">
   <div class="nav">
-    <a href="chat.html" style="background: #0084ff; margin-right: 10px;">Go to Messenger</a>
-    <a href="index.html" onclick="logout()">Logout</a>
+    <a href="index.html" style="background: #28a745; margin-right: 10px;">Login / Register</a>
+    <a href="chat.html" id="chatLink" style="background: #0084ff; margin-right: 10px; display: none;">Go to Messenger</a>
+    <a href="#" id="logoutBtn" onclick="logout()" style="display: none;">Logout</a>
   </div>
 
   <h2 style="text-align: center; margin-bottom: 30px; color: #333;">Registered User Directory</h2>
@@ -41,102 +33,68 @@
   <table>
     <thead>
       <tr>
-        <th>Name</th>
-        <th>Mobile</th>
-        <th>Email</th>
-        <th>City</th>
+        <th>Full Name</th>
+        <th>Email Address</th>
+        <th>Registration Date</th>
       </tr>
     </thead>
-    <tbody id="userTable"></tbody>
+    <tbody id="userTable">
+        <tr><td colspan="3" style="text-align:center">Loading directory...</td></tr>
+    </tbody>
   </table>
 
   <p id="msg" style="text-align:center; margin-top:10px;"></p>
 </div>
 
 <script>
-  const socket = io("https://node-api-task-nl8e.onrender.com", { transports: ["websocket"] });
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
-  
-  if (!loggedUser || !loggedUser.email) {
-    window.location.href = "index.html";
-  }
-
   let cachedUsersForToaster = [];
 
-  // 🔥 Fix 1: Join with 'list' view so messages remain UNREAD on server
-  socket.emit("join", { email: loggedUser.email, view: "list" });
+  // 🔥 Task 2 Fix: Removed the mandatory redirect
+  if (loggedUser && loggedUser.email) {
+      document.getElementById("chatLink").style.display = "inline-block";
+      document.getElementById("logoutBtn").style.display = "inline-block";
 
-  // 🔥 Fix 2: Enhanced Toaster Notification logic
-  socket.on("receive_message", data => {
-      const senderEmail = data.senderEmail.toLowerCase();
-      
-      // Find display name from cached list
-      const userObj = cachedUsersForToaster.find(u => u.email.toLowerCase() === senderEmail);
-      const displayName = userObj ? `${userObj.firstName} ${userObj.lastName || ''}` : senderEmail;
+      const socket = io("https://node-api-task-nl8e.onrender.com", { transports: ["websocket"] });
+      socket.emit("join", { email: loggedUser.email, view: "list" });
 
-      const toaster = document.getElementById("msgToaster");
-      // Show name and a small preview of the message
-      toaster.innerText = `📩 ${displayName}: ${data.message || 'Sent a file'}`;
-      toaster.style.display = "block";
-      
-      // Click on toaster to jump to specific chat
-      toaster.onclick = () => {
-          window.location.href = `chat.html?email=${encodeURIComponent(senderEmail)}`;
-      };
-      
-      setTimeout(() => { toaster.style.display = "none"; }, 5000);
-
-      // 🔥 Fix 3: Background Tab Blinking (WhatsApp Style)
-      if (document.hidden) {
-          const oldTitle = document.title;
-          const alertMsg = "📩 NEW MESSAGE!";
-          const blinkInterval = setInterval(() => {
-              document.title = (document.title === alertMsg) ? oldTitle : alertMsg;
-          }, 1000);
-
-          window.onfocus = () => {
-              clearInterval(blinkInterval);
-              document.title = oldTitle;
-          };
-
-          // Native Browser Notification
-          if (Notification.permission === "granted") {
-              new Notification("New Message", { body: `${displayName} sent you a message.` });
-          }
-      }
-  });
-
-  // Request browser permission for notifications
-  if (Notification.permission !== "granted") {
-      Notification.requestPermission();
+      socket.on("receive_message", data => {
+          const senderEmail = data.senderEmail.toLowerCase();
+          const userObj = cachedUsersForToaster.find(u => u.email.toLowerCase() === senderEmail);
+          const displayName = userObj ? `${userObj.firstName} ${userObj.lastName || ''}` : senderEmail;
+          const toaster = document.getElementById("msgToaster");
+          toaster.innerText = `📩 ${displayName}: ${data.message || 'Media Received'}`;
+          toaster.style.display = "block";
+          toaster.onclick = () => window.location.href = `chat.html?email=${encodeURIComponent(senderEmail)}`;
+          setTimeout(() => { toaster.style.display = "none"; }, 5000);
+      });
   }
 
   $(document).ready(function () {
-    // Load users and store in cache for toaster mapping
-    $.get("https://node-api-task-nl8e.onrender.com/api/users/all", function (data) {
+    // 🔥 Updated API URL to use the verified public endpoint
+    const publicApiUrl = "https://node-api-task-nl8e.onrender.com/api/chat/all-registered";
+
+    $.get(publicApiUrl, function (data) {
         cachedUsersForToaster = data; 
         $("#userTable").html("");
 
-        if (data.length === 0) {
-            $("#userTable").append('<tr><td colspan="4" style="text-align:center">No users found</td></tr>');
+        if (!data || data.length === 0) {
+            $("#userTable").append('<tr><td colspan="3" style="text-align:center">No registered users found.</td></tr>');
             return;
         }
 
         data.forEach(user => {
-            if (user.email !== loggedUser.email) {
-                $("#userTable").append(`
-                  <tr>
-                    <td><strong>${user.firstName} ${user.lastName || ''}</strong></td>
-                    <td>${user.mobile || "-"}</td>
-                    <td>${user.email}</td>
-                    <td>${user.address?.city || "-"}</td>
-                  </tr>
-                `);
-            }
+            const regDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A";
+            $("#userTable").append(`
+              <tr>
+                <td><strong>${user.firstName} ${user.lastName || ''}</strong></td>
+                <td>${user.email}</td>
+                <td>${regDate}</td>
+              </tr>
+            `);
         });
-      }
-    ).fail(function() {
-        $("#msg").text("Failed to load users.").css("color", "red");
+    }).fail(function() {
+        $("#userTable").html('<tr><td colspan="3" style="text-align:center; color:red;">Connection error. Check if the server is sleeping.</td></tr>');
     });
   });
 
@@ -145,6 +103,5 @@
     window.location.href = "index.html";
   }
 </script>
-
 </body>
 </html>

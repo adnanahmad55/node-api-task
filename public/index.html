@@ -4,6 +4,13 @@
   <title>User Register & Login</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    /* Styling for better clarity */
+    .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .public-link { background: #28a745; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 14px; }
+    .public-link:hover { background: #218838; }
+    hr { border: 0; border-top: 1px solid #ddd; margin: 30px 0; }
+  </style>
 </head>
 <body>
 
@@ -11,12 +18,9 @@
 
   <div class="nav">
     <span></span>
-    <a href="list.html">Show All Users</a>
+    <a href="list.html" class="public-link">View Public Directory (Task 2)</a>
   </div>
 
-  <!-- =========================
-       REGISTER SECTION
-  ========================== -->
   <h2>Add New User (Register)</h2>
 
   <form id="userForm">
@@ -43,9 +47,6 @@
 
   <hr>
 
-  <!-- =========================
-       LOGIN SECTION
-  ========================== -->
   <h2>Login</h2>
 
   <form id="loginForm">
@@ -67,10 +68,9 @@ $("#login").on("input", function () {
   const loginRegex = /^[A-Za-z0-9]{8}$/;
 
   if (loginRegex.test(login)) {
-    $("#loginHint").text("✔ Valid login").addClass("success").removeClass("error");
+    $("#loginHint").text("✔ Valid login").css("color", "green");
   } else {
-    $("#loginHint").text("Login must be exactly 8 characters")
-      .addClass("error").removeClass("success");
+    $("#loginHint").text("Login must be exactly 8 characters").css("color", "red");
   }
 });
 
@@ -82,11 +82,9 @@ $("#password").on("input", function () {
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{6,}$/;
 
   if (passwordRegex.test(password)) {
-    $("#passwordHint").text("✔ Strong password")
-      .addClass("success").removeClass("error");
+    $("#passwordHint").text("✔ Strong password").css("color", "green");
   } else {
-    $("#passwordHint").text("Weak password")
-      .addClass("error").removeClass("success");
+    $("#passwordHint").text("Weak password").css("color", "red");
   }
 });
 
@@ -116,16 +114,12 @@ $("#userForm").submit(function (e) {
     type: "POST",
     contentType: "application/json",
     data: JSON.stringify(data),
-
     success: function () {
-      $("#msg").css("color", "green")
-        .text("User registered successfully ✅");
+      $("#msg").css("color", "green").text("User registered successfully ✅");
       $("#userForm")[0].reset();
     },
-
     error: function (err) {
-      $("#msg").css("color", "red")
-        .text(err.responseJSON?.message || err.responseText);
+      $("#msg").css("color", "red").text(err.responseJSON?.message || "Registration failed");
     }
   });
 });
@@ -144,30 +138,23 @@ $("#loginForm").submit(function (e) {
     type: "POST",
     contentType: "application/json",
     data: JSON.stringify({ email, password }),
-
     success: function (res) {
-      $("#loginMsg").css("color", "green")
-        .text("Login successful ✅");
+      $("#loginMsg").css("color", "green").text("Login successful ✅");
 
-      // 🔥 SAVE USER
-      localStorage.setItem(
-        "loggedUser",
-        JSON.stringify({
+      // 🔥 SAVE USER DATA
+      localStorage.setItem("loggedUser", JSON.stringify({
           email: res.user.email,
           firstName: res.user.firstName,
           lastName: res.user.lastName
-        })
-      );
+      }));
 
-      // 🔥 REDIRECT
+      // 🔥 REDIRECT TO DIRECTORY
       setTimeout(() => {
         window.location.href = "list.html";
       }, 400);
     },
-
     error: function (err) {
-      $("#loginMsg").css("color", "red")
-        .text(err.responseJSON?.message || "Login failed");
+      $("#loginMsg").css("color", "red").text(err.responseJSON?.message || "Login failed");
     }
   });
 });
