@@ -4,13 +4,14 @@ const Message = require("../models/Message");
 const User = require("../models/User");
 
 /**
- * 🔹 LEFT SIDEBAR USERS (With Last Message & Unread Count)
+ * 🔹 1. GET ALL USERS (Task 2 & Sidebar)
+ * Is route se aapko saare users milenge last message aur unread count ke saath.
  */
 router.get("/users/:email", async (req, res) => {
   try {
     const loggedInEmail = req.params.email.toLowerCase();
 
-    // 1. Saare users fetch karo (lastName bhi add kiya hai)
+    // 1. Saare users fetch karo (lastName bhi add kiya hai taaki Task 2 popup mein poora naam dikhe)
     const users = await User.find({ email: { $ne: loggedInEmail } })
                             .select("email firstName lastName");
 
@@ -26,7 +27,7 @@ router.get("/users/:email", async (req, res) => {
         ]
       }).sort({ createdAt: -1 });
 
-      // Kitne messages abhi tak read nahi huye hain
+      // Kitne messages abhi tak read nahi huye hain (Unread Badge ke liye)
       const unread = await Message.countDocuments({
         senderEmail: userEmail,
         receiverEmail: loggedInEmail,
@@ -35,9 +36,10 @@ router.get("/users/:email", async (req, res) => {
 
       return {
         ...user._doc,
+        // Frontend Task 2 mein dikhane ke liye extra details
         lastMessage: lastMsg ? (lastMsg.messageType === 'text' ? lastMsg.message : `[${lastMsg.messageType}]`) : "No messages yet",
         lastMsgTime: lastMsg ? lastMsg.createdAt : null,
-        unreadCount: unread // Frontend isse badges dikhayega
+        unreadCount: unread 
       };
     }));
 
@@ -48,7 +50,22 @@ router.get("/users/:email", async (req, res) => {
 });
 
 /**
- * 🔹 CHAT HISTORY (Fixes visibility of both sender and receiver messages)
+ * 🔹 2. GET LOGGED IN USER PROFILE
+ * Login ke baad agar username nahi dikh raha, toh is route se frontend data fetch karega.
+ */
+router.get("/profile/:email", async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.params.email.toLowerCase() });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * 🔹 3. CHAT HISTORY
+ * Dono users ke beech ki chat history laane ke liye.
  */
 router.get("/messages/:me/:other", async (req, res) => {
   try {
@@ -56,7 +73,7 @@ router.get("/messages/:me/:other", async (req, res) => {
     const myEmail = me.toLowerCase();
     const otherEmail = other.toLowerCase();
 
-    // Dono side ka data fetch hoga taaki history poori dikhe
+    // Sender aur Receiver dono ke messages fetch honge
     const messages = await Message.find({
       $or: [
         { senderEmail: myEmail, receiverEmail: otherEmail },
