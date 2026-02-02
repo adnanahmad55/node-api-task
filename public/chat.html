@@ -151,6 +151,95 @@
 
   let activeUser = null; let unreadCount = {}; let currentOnlineEmails = []; let cachedUsers = [];
 
+  // 🔥 1. EMOJI PICKER LOGIC ADDED HERE
+  const picker = document.getElementById('picker');
+  const emojiBtn = document.getElementById('emojiBtn');
+  const messageInput = document.getElementById('messageInput');
+
+  if(emojiBtn) {
+      emojiBtn.onclick = (e) => {
+          e.stopPropagation();
+          picker.style.display = (picker.style.display === 'block') ? 'none' : 'block';
+      };
+  }
+
+  if(picker) {
+      picker.addEventListener('emoji-click', event => {
+          messageInput.value += event.detail.unicode;
+          // picker.style.display = 'none'; // Uncomment to auto-close after selection
+          messageInput.focus();
+      });
+      // Close picker when clicking outside
+      document.addEventListener('click', (e) => {
+          if (!picker.contains(e.target) && e.target !== emojiBtn) {
+              picker.style.display = 'none';
+          }
+      });
+  }
+
+  // 🔥 2. VOICE RECORDER LOGIC ADDED HERE
+  const voiceBtn = document.getElementById('voiceBtn');
+  const timerDisplay = document.getElementById('recordingTimer');
+  let mediaRecorder;
+  let audioChunks = [];
+  let isRecording = false;
+  let timerInterval;
+  let recordingTime = 0;
+
+  if(voiceBtn) {
+      voiceBtn.addEventListener('click', async () => {
+          if (!activeUser) return alert("Select a chat first to record voice!");
+
+          if (!isRecording) {
+              // START RECORDING
+              try {
+                  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                  mediaRecorder = new MediaRecorder(stream);
+                  audioChunks = [];
+                  mediaRecorder.start();
+                  isRecording = true;
+
+                  voiceBtn.classList.add('recording-active');
+                  timerDisplay.style.display = 'inline';
+                  recordingTime = 0;
+                  timerDisplay.innerText = "00:00";
+                  
+                  timerInterval = setInterval(() => {
+                      recordingTime++;
+                      const min = Math.floor(recordingTime / 60).toString().padStart(2, '0');
+                      const sec = (recordingTime % 60).toString().padStart(2, '0');
+                      timerDisplay.innerText = `${min}:${sec}`;
+                  }, 1000);
+
+                  mediaRecorder.addEventListener("dataavailable", event => {
+                      audioChunks.push(event.data);
+                  });
+
+                  mediaRecorder.addEventListener("stop", () => {
+                      const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+                      // Convert Blob to File to reuse existing upload function
+                      const audioFile = new File([audioBlob], "voice_msg.webm", { type: "audio/webm" });
+                      handleMediaUpload(audioFile);
+                      
+                      // Stop all tracks
+                      stream.getTracks().forEach(track => track.stop());
+                  });
+
+              } catch (err) {
+                  console.error("Mic Error:", err);
+                  alert("Microphone access needed for voice messages.");
+              }
+          } else {
+              // STOP RECORDING
+              mediaRecorder.stop();
+              isRecording = false;
+              voiceBtn.classList.remove('recording-active');
+              timerDisplay.style.display = 'none';
+              clearInterval(timerInterval);
+          }
+      });
+  }
+
   // ========== USERS POPUP LOGIC ==========
   async function showAllUsersPopup() {
     document.getElementById('allUsersModal').style.display = 'block';
